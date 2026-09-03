@@ -65,6 +65,7 @@ export default function ReservationForm({
     setLoading(true);
 
     try {
+      // 1. Enregistrement de la réservation
       const { error } = await supabase.from("reservations").insert([
         {
           user_id: user.id,
@@ -72,7 +73,7 @@ export default function ReservationForm({
           reservation_date: date,
           reservation_time: time,
           guests: guests,
-          special_request: specialRequests.trim() || null, // Rétrocompatibilité du nom de colonne
+          special_request: specialRequests.trim() || null,
           status: "pending",
         },
       ]);
@@ -85,6 +86,27 @@ export default function ReservationForm({
         });
         setLoading(false);
         return;
+      }
+
+      // 2. Récupération du gérant du restaurant (owner_id) pour la notification
+      const { data: restaurantData } = await supabase
+        .from("restaurants")
+        .select("owner_id, name")
+        .eq("id", restaurantId)
+        .single();
+
+      if (restaurantData?.owner_id) {
+        const clientName = user.user_metadata?.full_name || user.email || "Un client";
+        const name = restaurantName || restaurantData.name || "votre établissement";
+
+        await supabase.from("notifications").insert([
+          {
+            user_id: restaurantData.owner_id,
+            title: "Nouvelle réservation ! 🍽️",
+            message: `${clientName} a réservé une table pour ${guests} pers. chez ${name} le ${date} à ${time}.`,
+            is_read: false,
+          },
+        ]);
       }
 
       setMessage({
