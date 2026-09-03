@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import Navbar from "@/components/navbar"; // <-- Importation du composant Navbar
+import Navbar from "@/components/navbar";
 import "./globals.css";
 
 const inter = Inter({
@@ -19,9 +19,9 @@ export const metadata: Metadata = {
   keywords: ["restaurant", "réservation", "gastronomie", "tables", "savora"],
   authors: [{ name: "Savora" }],
   icons: {
-    icon: "/favicon.ico",
-    shortcut: "/icon.png",
-    apple: "/apple-icon.png",
+    icon: "/savora.logo.png",
+    shortcut: "/savora.logo.png",
+    apple: "/savora.logo.png",
   },
   openGraph: {
     title: "Savora - Réservez votre table de restaurant",
