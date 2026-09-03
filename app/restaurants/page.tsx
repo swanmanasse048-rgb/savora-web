@@ -6,7 +6,7 @@ export default async function RestaurantsPage() {
   const { data: restaurants, error } = await supabase
     .from("restaurants")
     .select(
-      "id, name, slug, description, image_url, address, category, menu_urls"
+      "*"
     )
     .order("created_at", { ascending: false });
 
