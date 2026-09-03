@@ -11,7 +11,7 @@ interface Reservation {
   reservation_date: string;
   reservation_time: string;
   guests: number;
-  status: "pending" | "confirmed" | "cancelled";
+  status: "pending" | "accepted" | "rejected" | "cancelled";
   restaurant: {
     name: string;
     image_url: string | null;
@@ -27,7 +27,9 @@ export default function MyReservationsPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchReservations = async () => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const fetchReservationsAndSubscribe = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -37,6 +39,9 @@ export default function MyReservationsPage() {
         return;
       }
 
+      const userId = session.user.id;
+
+      // 1. Récupération initiale des données
       const { data, error } = await supabase
         .from("reservations")
         .select(`
@@ -47,7 +52,7 @@ export default function MyReservationsPage() {
           status,
           restaurant:restaurants(name, image_url, address, slug)
         `)
-        .eq("user_id", session.user.id)
+        .eq("user_id", userId)
         .order("reservation_date", { ascending: false });
 
       if (!error && data) {
@@ -60,9 +65,37 @@ export default function MyReservationsPage() {
         setReservations(formattedData);
       }
       setLoading(false);
+
+      // 2. Écoute en temps réel des mises à jour de statut
+      channel = supabase
+        .channel(`user-reservations-${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "reservations",
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            const updated = payload.new as { id: string; status: Reservation["status"] };
+            setReservations((prev) =>
+              prev.map((r) =>
+                r.id === updated.id ? { ...r, status: updated.status } : r
+              )
+            );
+          }
+        )
+        .subscribe();
     };
 
-    fetchReservations();
+    fetchReservationsAndSubscribe();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
   }, [router]);
 
   const handleCancel = async (id: string) => {
@@ -82,7 +115,6 @@ export default function MyReservationsPage() {
     setCancellingId(null);
   };
 
-  // CHARGEMENT STRUCTURÉ (SKELETON) AUX COULEURS DU THÈME
   if (loading) {
     return (
       <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
@@ -105,7 +137,7 @@ export default function MyReservationsPage() {
     <main className="min-h-screen bg-gradient-to-b from-[#800020]/5 via-white to-white py-12">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         
-        {/* EN-TÊTE DE PAGE */}
+        {/* EN-TÊTE */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#800020]/15 pb-8">
           <div>
             <span className="inline-block rounded-full bg-[#800020]/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[#800020]">
@@ -183,7 +215,6 @@ export default function MyReservationsPage() {
                         </p>
                       )}
 
-                      {/* BADGES METADATA DU THÈME */}
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-gray-700">
                         <span className="inline-flex items-center gap-1 rounded-md bg-[#800020]/5 px-2.5 py-1 border border-[#800020]/15 text-[#800020]">
                           📅 {item.reservation_date}
@@ -198,34 +229,40 @@ export default function MyReservationsPage() {
                     </div>
                   </div>
 
-                  {/* STATUT ET BOUTONS AVEC VOTRE CHARTE */}
+                  {/* BADGE DE STATUT & BOUTONS */}
                   <div className="flex sm:flex-col items-center sm:items-end justify-between border-t border-gray-100 pt-3 sm:border-0 sm:pt-0 gap-3">
                     <span
                       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-                        item.status === "confirmed"
-                          ? "bg-[#800020] text-white"
+                        item.status === "accepted"
+                          ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                          : item.status === "rejected"
+                          ? "bg-rose-100 text-rose-800 border border-rose-200"
                           : item.status === "cancelled"
-                          ? "bg-gray-100 text-gray-400 border border-gray-200"
-                          : "bg-[#800020]/10 text-[#800020] border border-[#800020]/20"
+                          ? "bg-gray-100 text-gray-500 border border-gray-200"
+                          : "bg-amber-100 text-amber-800 border border-amber-200"
                       }`}
                     >
                       <span
                         className={`h-1.5 w-1.5 rounded-full ${
-                          item.status === "confirmed"
-                            ? "bg-white"
+                          item.status === "accepted"
+                            ? "bg-emerald-600"
+                            : item.status === "rejected"
+                            ? "bg-rose-600"
                             : item.status === "cancelled"
                             ? "bg-gray-400"
-                            : "bg-[#800020] animate-pulse"
+                            : "bg-amber-600 animate-pulse"
                         }`}
                       />
-                      {item.status === "confirmed"
-                        ? "Confirmée"
+                      {item.status === "accepted"
+                        ? "Acceptée"
+                        : item.status === "rejected"
+                        ? "Refusée"
                         : item.status === "cancelled"
                         ? "Annulée"
                         : "En attente"}
                     </span>
 
-                    {item.status !== "cancelled" && (
+                    {item.status !== "cancelled" && item.status !== "rejected" && (
                       <button
                         onClick={() => handleCancel(item.id)}
                         disabled={cancellingId === item.id}
