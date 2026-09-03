@@ -2,12 +2,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 
+// 1. Empêche Next.js de garder la liste en cache statique (rendu temps réel)
+export const revalidate = 0;
+
 export default async function RestaurantsPage() {
+  // 2. Sélection des champs explicites pour optimiser les performances au lieu de "*"
   const { data: restaurants, error } = await supabase
     .from("restaurants")
-    .select(
-      "*"
-    )
+    .select("id, name, slug, description, address, image_url, category")
     .order("created_at", { ascending: false });
 
   if (error) {
