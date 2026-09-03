@@ -29,7 +29,7 @@ export default function ReservationForm({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Vérification continue de la session utilisateur
+  // Vérification de la session utilisateur
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -65,48 +65,64 @@ export default function ReservationForm({
     setLoading(true);
 
     try {
-      // 1. Enregistrement de la réservation
-      const { error } = await supabase.from("reservations").insert([
-        {
-          user_id: user.id,
-          restaurant_id: restaurantId,
-          reservation_date: date,
-          reservation_time: time,
-          guests: guests,
-          special_request: specialRequests.trim() || null,
-          status: "pending",
-        },
-      ]);
+      // 1. Insertion de la réservation et récupération de l'ID généré
+      const { data: reservationData, error: reservationError } = await supabase
+        .from("reservations")
+        .insert([
+          {
+            user_id: user.id,
+            restaurant_id: restaurantId,
+            reservation_date: date,
+            reservation_time: time,
+            guests: guests,
+            special_request: specialRequests.trim() || null,
+            status: "pending",
+          },
+        ])
+        .select()
+        .single();
 
-      if (error) {
-        console.error(error);
+      if (reservationError) {
+        console.error("Erreur réservation :", reservationError);
         setMessage({
           type: "error",
-          text: `Impossible d'effectuer la réservation : ${error.message}`,
+          text: `Impossible d'effectuer la réservation : ${reservationError.message}`,
         });
         setLoading(false);
         return;
       }
 
-      // 2. Récupération du gérant du restaurant (owner_id) pour la notification
-      const { data: restaurantData } = await supabase
+      // 2. Récupération du gérant du restaurant (owner_id)
+      const { data: restaurantData, error: restaurantError } = await supabase
         .from("restaurants")
         .select("owner_id, name")
         .eq("id", restaurantId)
         .single();
 
+      if (restaurantError) {
+        console.error("Erreur récupération restaurant :", restaurantError);
+      }
+
+      // 3. Envoi de la notification au gérant
       if (restaurantData?.owner_id) {
         const clientName = user.user_metadata?.full_name || user.email || "Un client";
         const name = restaurantName || restaurantData.name || "votre établissement";
 
-        await supabase.from("notifications").insert([
+        const { error: notifError } = await supabase.from("notifications").insert([
           {
             user_id: restaurantData.owner_id,
+            restaurant_id: restaurantId,
+            reservation_id: reservationData.id,
             title: "Nouvelle réservation ! 🍽️",
             message: `${clientName} a réservé une table pour ${guests} pers. chez ${name} le ${date} à ${time}.`,
+            type: "new_reservation",
             is_read: false,
           },
         ]);
+
+        if (notifError) {
+          console.error("Erreur lors de l'envoi de la notification :", notifError);
+        }
       }
 
       setMessage({
@@ -119,7 +135,7 @@ export default function ReservationForm({
       setGuests(2);
       setSpecialRequests("");
     } catch (err) {
-      console.error(err);
+      console.error("Erreur inattendue :", err);
       setMessage({ type: "error", text: "Une erreur inattendue est survenue." });
     }
 
