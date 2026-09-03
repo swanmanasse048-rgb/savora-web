@@ -124,13 +124,6 @@ export default async function Home() {
                 Découvrir les restaurants
               </Link>
 
-              <Link
-                href="/download"
-                className="rounded-full border border-white/30 px-8 py-4 text-base font-semibold text-white backdrop-blur-sm transition hover:bg-white/10 hover:border-white/50"
-              >
-                Télécharger l'app
-              </Link>
-
             </div>
 
           </div>
