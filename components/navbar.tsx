@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
 import DownloadAppModal from "./DownloadAppModal";
+import NotificationBell from "./NotificationBell"; // 1. Import de la cloche
 
 interface MenuItem {
   id: string;
@@ -91,6 +92,7 @@ export default function Navbar() {
             SAVORA
           </Link>
 
+          {/* LIENS DE NAVIGATION DESKTOP */}
           <nav className="hidden items-center gap-8 md:flex">
             {allNavLinks.map((link, index) => {
               const isActive = pathname === link.href;
@@ -110,14 +112,20 @@ export default function Navbar() {
             })}
           </nav>
 
+          {/* ACTIONS DESKTOP */}
           <div className="hidden items-center gap-4 md:flex">
             {user ? (
-              <button
-                onClick={handleSignOut}
-                className="rounded-full border border-[#800020]/20 px-5 py-2.5 text-sm font-semibold text-[#800020] transition hover:bg-[#800020]/5"
-              >
-                Déconnexion
-              </button>
+              <>
+                {/* 2. NotificationBell affiché si l'utilisateur est connecté */}
+                <NotificationBell />
+
+                <button
+                  onClick={handleSignOut}
+                  className="rounded-full border border-[#800020]/20 px-5 py-2.5 text-sm font-semibold text-[#800020] transition hover:bg-[#800020]/5"
+                >
+                  Déconnexion
+                </button>
+              </>
             ) : (
               <Link
                 href="/login"
@@ -135,36 +143,42 @@ export default function Navbar() {
             </button>
           </div>
 
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
-            className="rounded-xl p-2 text-gray-700 hover:bg-gray-100 md:hidden"
-          >
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          {/* EN-TÊTE MOBILE (CLOCHE + BURGER) */}
+          <div className="flex items-center gap-2 md:hidden">
+            {user && <NotificationBell />}
+
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+              className="rounded-xl p-2 text-gray-700 hover:bg-gray-100"
             >
-              {mobileMenuOpen ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              )}
-            </svg>
-          </button>
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                {mobileMenuOpen ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
 
+        {/* MENU MOBILE */}
         {mobileMenuOpen && (
           <div className="border-b border-[#800020]/10 bg-white px-6 pb-6 pt-2 md:hidden">
             <nav className="flex flex-col gap-4">
@@ -195,8 +209,8 @@ export default function Navbar() {
               ) : (
                 <Link
                   href="/login"
-                  onClick={() => setMobileMenuOpen(false)}
                   className="w-full rounded-full border border-[#800020] py-3 text-center text-sm font-semibold text-[#800020]"
+                  onClick={() => setMobileMenuOpen(false)}
                 >
                   Se connecter
                 </Link>
