@@ -16,9 +16,10 @@ export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let activeChannel: ReturnType<typeof supabase.channel> | null = null;
 
-    const setupNotifications = async () => {
+    const initNotifications = async () => {
+      // 1. Vérification de la session
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -27,7 +28,7 @@ export default function NotificationBell() {
 
       const userId = session.user.id;
 
-      // 1. Récupérer les notifications existantes
+      // 2. Charger les notifications existantes
       const { data } = await supabase
         .from("notifications")
         .select("*")
@@ -37,8 +38,8 @@ export default function NotificationBell() {
 
       if (data) setNotifications(data);
 
-      // 2. Écouter les nouvelles notifications en Realtime
-      channel = supabase
+      // 3. Initialisation et souscription synchrone au canal Realtime
+      activeChannel = supabase
         .channel(`user-notifications-${userId}`)
         .on(
           "postgres_changes",
@@ -56,10 +57,13 @@ export default function NotificationBell() {
         .subscribe();
     };
 
-    setupNotifications();
+    initNotifications();
 
+    // 4. Nettoyage strict au démontage ou re-rendu
     return () => {
-      if (channel) supabase.removeChannel(channel);
+      if (activeChannel) {
+        supabase.removeChannel(activeChannel);
+      }
     };
   }, []);
 
