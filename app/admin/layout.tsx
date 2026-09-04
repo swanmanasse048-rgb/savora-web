@@ -1,18 +1,20 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase-server";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // 1. Vérifier la session utilisateur
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const supabase = await createClient();
 
-  if (!session) {
+  // 1. Obtenir l'utilisateur connecté depuis les cookies de session
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
     redirect("/login?redirectTo=/admin");
   }
 
@@ -20,7 +22,7 @@ export default async function AdminLayout({
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
   if (profile?.role !== "admin") {
