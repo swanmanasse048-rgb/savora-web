@@ -64,7 +64,7 @@ export default function Navbar() {
             SAVORA
           </Link>
 
-          {/* NAVIGATION DESKTOP */}
+          {/* LIENS DE NAVIGATION DESKTOP */}
           <nav className="hidden items-center gap-8 md:flex">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
@@ -113,7 +113,7 @@ export default function Navbar() {
             </button>
           </div>
 
-          {/* MOBILE BURGER */}
+          {/* MENU MOBILE */}
           <div className="flex items-center gap-2 md:hidden">
             {user && <NotificationBell />}
             <button
@@ -131,7 +131,6 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* MENU MOBILE */}
         {mobileMenuOpen && (
           <div className="border-b border-[#800020]/10 bg-white px-6 pb-6 pt-2 md:hidden">
             <nav className="flex flex-col gap-4">
