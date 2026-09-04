@@ -10,6 +10,7 @@ export default async function RestaurantsPage() {
   const { data: restaurants, error } = await supabase
     .from("restaurants")
     .select("id, name, slug, description, address, image_url, category")
+    .eq("status", "approved") // Seuls les restaurants validés par l'admin
     .order("created_at", { ascending: false });
 
   if (error) {
