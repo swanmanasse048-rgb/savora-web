@@ -73,16 +73,16 @@ export default function AdminRestaurantsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Validation des Restaurants</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="mt-1 text-sm text-gray-500">
             Gérez les demandes de partenariat et validez les établissements.
           </p>
         </div>
 
         {/* Filtres par statut */}
-        <div className="flex gap-2 bg-gray-200 p-1 rounded-2xl w-fit">
+        <div className="flex w-fit gap-2 rounded-2xl bg-gray-200 p-1">
           <button
             onClick={() => setFilter("pending")}
-            className={`px-4 py-2 text-xs font-semibold rounded-xl transition ${
+            className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
               filter === "pending"
                 ? "bg-white text-gray-900 shadow-sm"
                 : "text-gray-600 hover:text-gray-900"
@@ -92,7 +92,7 @@ export default function AdminRestaurantsPage() {
           </button>
           <button
             onClick={() => setFilter("approved")}
-            className={`px-4 py-2 text-xs font-semibold rounded-xl transition ${
+            className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
               filter === "approved"
                 ? "bg-white text-gray-900 shadow-sm"
                 : "text-gray-600 hover:text-gray-900"
@@ -102,7 +102,7 @@ export default function AdminRestaurantsPage() {
           </button>
           <button
             onClick={() => setFilter("rejected")}
-            className={`px-4 py-2 text-xs font-semibold rounded-xl transition ${
+            className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
               filter === "rejected"
                 ? "bg-white text-gray-900 shadow-sm"
                 : "text-gray-600 hover:text-gray-900"
@@ -112,7 +112,7 @@ export default function AdminRestaurantsPage() {
           </button>
           <button
             onClick={() => setFilter("all")}
-            className={`px-4 py-2 text-xs font-semibold rounded-xl transition ${
+            className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
               filter === "all"
                 ? "bg-white text-gray-900 shadow-sm"
                 : "text-gray-600 hover:text-gray-900"
@@ -146,6 +146,7 @@ export default function AdminRestaurantsPage() {
                       src={restaurant.image_url}
                       alt={restaurant.name}
                       fill
+                      unoptimized
                       className="object-cover"
                     />
                   ) : (
@@ -155,7 +156,7 @@ export default function AdminRestaurantsPage() {
                   )}
                   {/* Badge de statut */}
                   <span
-                    className={`absolute top-3 right-3 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                    className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
                       restaurant.status === "approved"
                         ? "bg-green-100 text-green-700"
                         : restaurant.status === "rejected"
@@ -189,7 +190,7 @@ export default function AdminRestaurantsPage() {
               </div>
 
               {/* Actions de validation */}
-              <div className="border-t border-gray-100 p-4 bg-gray-50 flex gap-2">
+              <div className="flex gap-2 border-t border-gray-100 bg-gray-50 p-4">
                 {restaurant.status !== "approved" && (
                   <button
                     onClick={() => handleUpdateStatus(restaurant.id, "approved")}
