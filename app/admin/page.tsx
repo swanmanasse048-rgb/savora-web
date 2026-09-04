@@ -1,7 +1,9 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase-server";
 
 export default async function AdminDashboard() {
-  // Récupération des statistiques
+  const supabase = await createClient();
+
+  // Récupération sécurisée des statistiques avec authentification serveur
   const [{ count: restaurantsCount }, { count: reservationsCount }, { count: usersCount }] =
     await Promise.all([
       supabase.from("restaurants").select("*", { count: "exact", head: true }),
