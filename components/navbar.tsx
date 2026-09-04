@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
 import DownloadAppModal from "./DownloadAppModal";
-import NotificationBell from "./NotificationBell"; // 1. Import de la cloche
+import NotificationBell from "./NotificationBell";
 
 interface MenuItem {
   id: string;
@@ -19,23 +19,50 @@ export default function Navbar() {
   const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false); // État pour vérifier si l'utilisateur est admin
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAppModalOpen, setIsAppModalOpen] = useState(false);
   const [dbNavLinks, setDbNavLinks] = useState<MenuItem[]>([]);
+
+  // Fonction pour récupérer le rôle de l'utilisateur
+  const checkAdminRole = async (userId: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .single();
+
+    setIsAdmin(data?.role === "admin");
+  };
 
   useEffect(() => {
     const checkUser = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
+      
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        await checkAdminRole(currentUser.id);
+      } else {
+        setIsAdmin(false);
+      }
     };
 
     checkUser();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
+      async (_event, session) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+
+        if (currentUser) {
+          await checkAdminRole(currentUser.id);
+        } else {
+          setIsAdmin(false);
+        }
       }
     );
 
@@ -59,6 +86,7 @@ export default function Navbar() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setIsAdmin(false);
     setMobileMenuOpen(false);
     router.push("/");
     router.refresh();
@@ -79,6 +107,11 @@ export default function Navbar() {
 
   if (user) {
     allNavLinks.push({ href: "/reservations", label: "Mes Réservations" });
+  }
+
+  // Ajout du lien vers le panel Admin si l'utilisateur est administrateur
+  if (user && isAdmin) {
+    allNavLinks.push({ href: "/admin", label: "👑 Admin" });
   }
 
   return (
@@ -116,7 +149,6 @@ export default function Navbar() {
           <div className="hidden items-center gap-4 md:flex">
             {user ? (
               <>
-                {/* 2. NotificationBell affiché si l'utilisateur est connecté */}
                 <NotificationBell />
 
                 <button
