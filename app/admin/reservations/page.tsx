@@ -18,6 +18,7 @@ type Reservation = {
 export default function AdminReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
 
   const fetchReservations = async () => {
@@ -56,6 +57,7 @@ export default function AdminReservationsPage() {
   }, [filter]);
 
   const updateStatus = async (id: string, newStatus: "confirmed" | "cancelled") => {
+    setUpdatingId(id);
     const { error } = await supabase
       .from("reservations")
       .update({ status: newStatus })
@@ -68,6 +70,7 @@ export default function AdminReservationsPage() {
         prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r))
       );
     }
+    setUpdatingId(null);
   };
 
   return (
@@ -75,24 +78,30 @@ export default function AdminReservationsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Réservations</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="mt-1 text-sm text-gray-500">
             Toutes les réservations passées sur l'application Savora.
           </p>
         </div>
 
         {/* Filtres */}
-        <div className="flex gap-2 bg-gray-200 p-1 rounded-2xl w-fit">
+        <div className="flex w-fit gap-2 rounded-2xl bg-gray-200 p-1">
           {(["all", "pending", "confirmed", "cancelled"] as const).map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status)}
-              className={`px-4 py-2 text-xs font-semibold rounded-xl capitalize transition ${
+              className={`rounded-xl px-4 py-2 text-xs font-semibold capitalize transition ${
                 filter === status
                   ? "bg-white text-gray-900 shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              {status === "all" ? "Toutes" : status === "pending" ? "En attente" : status === "confirmed" ? "Confirmées" : "Annulées"}
+              {status === "all"
+                ? "Toutes"
+                : status === "pending"
+                ? "En attente"
+                : status === "confirmed"
+                ? "Confirmées"
+                : "Annulées"}
             </button>
           ))}
         </div>
@@ -160,16 +169,18 @@ export default function AdminReservationsPage() {
                     <div className="flex gap-2">
                       {res.status !== "confirmed" && (
                         <button
+                          disabled={updatingId === res.id}
                           onClick={() => updateStatus(res.id, "confirmed")}
-                          className="rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100"
+                          className="rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 disabled:opacity-50"
                         >
                           Confirmer
                         </button>
                       )}
                       {res.status !== "cancelled" && (
                         <button
+                          disabled={updatingId === res.id}
                           onClick={() => updateStatus(res.id, "cancelled")}
-                          className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
+                          className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
                         >
                           Annuler
                         </button>
