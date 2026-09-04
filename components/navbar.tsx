@@ -2,81 +2,34 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
 import DownloadAppModal from "./DownloadAppModal";
 import NotificationBell from "./NotificationBell";
 
-interface MenuItem {
-  id: string;
-  label: string;
-  menu_url: string;
-}
-
 export default function Navbar() {
   const pathname = usePathname();
-  const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false); // État pour vérifier si l'utilisateur est admin
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAppModalOpen, setIsAppModalOpen] = useState(false);
-  const [dbNavLinks, setDbNavLinks] = useState<MenuItem[]>([]);
-
-  // Fonction pour récupérer le rôle de l'utilisateur
-  const checkAdminRole = async (userId: string) => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", userId)
-      .single();
-
-    setIsAdmin(data?.role === "admin");
-  };
 
   useEffect(() => {
     const checkUser = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-
-      if (currentUser) {
-        await checkAdminRole(currentUser.id);
-      } else {
-        setIsAdmin(false);
-      }
+      setUser(session?.user ?? null);
     };
 
     checkUser();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-
-        if (currentUser) {
-          await checkAdminRole(currentUser.id);
-        } else {
-          setIsAdmin(false);
-        }
+      (_event, session) => {
+        setUser(session?.user ?? null);
       }
     );
-
-    const fetchMenus = async () => {
-      const { data, error } = await supabase
-        .from("menu_urls")
-        .select("id, label, menu_url");
-
-      if (!error && data) {
-        setDbNavLinks(data);
-      }
-    };
-
-    fetchMenus();
 
     return () => {
       authListener.subscription.unsubscribe();
@@ -86,32 +39,18 @@ export default function Navbar() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    setIsAdmin(false);
     setMobileMenuOpen(false);
-    router.push("/");
-    router.refresh();
+    window.location.href = "/";
   };
 
-  const staticNavLinks = [
+  const navLinks = [
     { href: "/", label: "Accueil" },
     { href: "/restaurants", label: "Restaurants" },
     { href: "/about", label: "À propos" },
   ];
 
-  const formattedDbLinks = dbNavLinks.map((item) => ({
-    href: item.menu_url,
-    label: item.label,
-  }));
-
-  const allNavLinks = [...staticNavLinks, ...formattedDbLinks];
-
   if (user) {
-    allNavLinks.push({ href: "/reservations", label: "Mes Réservations" });
-  }
-
-  // Ajout du lien vers le panel Admin si l'utilisateur est administrateur
-  if (user && isAdmin) {
-    allNavLinks.push({ href: "/admin", label: "👑 Admin" });
+    navLinks.push({ href: "/reservations", label: "Mes Réservations" });
   }
 
   return (
@@ -125,13 +64,13 @@ export default function Navbar() {
             SAVORA
           </Link>
 
-          {/* LIENS DE NAVIGATION DESKTOP */}
+          {/* NAVIGATION DESKTOP */}
           <nav className="hidden items-center gap-8 md:flex">
-            {allNavLinks.map((link, index) => {
+            {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
                 <Link
-                  key={`${link.href}-${index}`}
+                  key={link.href}
                   href={link.href}
                   className={`text-sm font-medium transition ${
                     isActive
@@ -150,7 +89,6 @@ export default function Navbar() {
             {user ? (
               <>
                 <NotificationBell />
-
                 <button
                   onClick={handleSignOut}
                   className="rounded-full border border-[#800020]/20 px-5 py-2.5 text-sm font-semibold text-[#800020] transition hover:bg-[#800020]/5"
@@ -175,35 +113,18 @@ export default function Navbar() {
             </button>
           </div>
 
-          {/* EN-TÊTE MOBILE (CLOCHE + BURGER) */}
+          {/* MOBILE BURGER */}
           <div className="flex items-center gap-2 md:hidden">
             {user && <NotificationBell />}
-
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle menu"
               className="rounded-xl p-2 text-gray-700 hover:bg-gray-100"
             >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {mobileMenuOpen ? (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 ) : (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 )}
               </svg>
             </button>
@@ -214,9 +135,9 @@ export default function Navbar() {
         {mobileMenuOpen && (
           <div className="border-b border-[#800020]/10 bg-white px-6 pb-6 pt-2 md:hidden">
             <nav className="flex flex-col gap-4">
-              {allNavLinks.map((link, index) => (
+              {navLinks.map((link) => (
                 <Link
-                  key={`${link.href}-${index}`}
+                  key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`text-base font-medium transition ${
