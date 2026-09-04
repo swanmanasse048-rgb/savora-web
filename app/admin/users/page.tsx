@@ -14,6 +14,7 @@ type Profile = {
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -35,6 +36,8 @@ export default function AdminUsersPage() {
   }, []);
 
   const handleRoleChange = async (userId: string, newRole: Profile["role"]) => {
+    setUpdatingId(userId);
+
     const { error } = await supabase
       .from("profiles")
       .update({ role: newRole })
@@ -47,13 +50,15 @@ export default function AdminUsersPage() {
         prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
       );
     }
+
+    setUpdatingId(null);
   };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Gestion des Utilisateurs</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="mt-1 text-sm text-gray-500">
           Gérez les rôles des comptes inscrits sur Savora.
         </p>
       </div>
@@ -90,16 +95,17 @@ export default function AdminUsersPage() {
                           : "bg-gray-100 text-gray-700"
                       }`}
                     >
-                      {u.role}
+                      {u.role === "restaurant_owner" ? "Gérant" : u.role}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <select
                       value={u.role}
+                      disabled={updatingId === u.id}
                       onChange={(e) =>
                         handleRoleChange(u.id, e.target.value as Profile["role"])
                       }
-                      className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-medium focus:border-[#800020] focus:outline-none"
+                      className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-medium focus:border-[#800020] focus:outline-none disabled:opacity-50"
                     >
                       <option value="client">Client</option>
                       <option value="restaurant_owner">Gérant</option>
