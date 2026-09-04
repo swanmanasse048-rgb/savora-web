@@ -9,7 +9,7 @@ export default async function AdminLayout({
 }) {
   const supabase = await createClient();
 
-  // 1. Obtenir l'utilisateur connecté depuis les cookies de session
+  // 1. Obtenir l'utilisateur connecté
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -18,15 +18,24 @@ export default async function AdminLayout({
     redirect("/login?redirectTo=/admin");
   }
 
-  // 2. Vérifier le rôle dans la table profiles
-  const { data: profile } = await supabase
+  // 2. Vérifier le rôle avec gestion d'erreur explicite
+  const { data: profile, error } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .single();
+    .maybeSingle(); // maybeSingle évite de lever une exception si aucun profil n'est trouvé
 
-  if (profile?.role !== "admin") {
-    redirect("/"); // Redirection si l'utilisateur n'est pas admin
+  // Affichage dans votre terminal serveur pour débugger
+  console.log("--- DEBUG ADMIN LAYOUT ---");
+  console.log("ID Utilisateur :", user.id);
+  console.log("Profil récupéré :", profile);
+  console.log("Erreur Supabase éventuelle :", error);
+  console.log("---------------------------");
+
+  // Si une erreur de lecture survient ou si le rôle n'est pas admin
+  if (error || !profile || profile.role !== "admin") {
+    console.log("Accès refusé : Rôle insuffisant ou profil introuvable.");
+    redirect("/"); 
   }
 
   return (
