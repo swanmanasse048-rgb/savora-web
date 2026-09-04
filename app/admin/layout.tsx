@@ -18,23 +18,23 @@ export default async function AdminLayout({
     redirect("/login?redirectTo=/admin");
   }
 
-  // 2. Vérifier le rôle avec gestion d'erreur explicite
+  // 2. Récupérer le rôle dans la table profiles
   const { data: profile, error } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .maybeSingle(); // maybeSingle évite de lever une exception si aucun profil n'est trouvé
+    .maybeSingle();
 
-  // Affichage dans votre terminal serveur pour débugger
+  // Logs pour identifier précisément le blocage dans le terminal VS Code
   console.log("--- DEBUG ADMIN LAYOUT ---");
-  console.log("ID Utilisateur :", user.id);
-  console.log("Profil récupéré :", profile);
-  console.log("Erreur Supabase éventuelle :", error);
+  console.log("ID Utilisateur connecté :", user.id);
+  console.log("Profil trouvé :", profile);
+  console.log("Erreur éventuelle :", error);
   console.log("---------------------------");
 
-  // Si une erreur de lecture survient ou si le rôle n'est pas admin
+  // Si le rôle n'est pas admin, renvoyer vers la page d'accueil
   if (error || !profile || profile.role !== "admin") {
-    console.log("Accès refusé : Rôle insuffisant ou profil introuvable.");
+    console.log("⚠️ Accès refusé : Le profil n'a pas le rôle 'admin'.");
     redirect("/"); 
   }
 
