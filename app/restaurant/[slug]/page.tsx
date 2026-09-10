@@ -15,6 +15,7 @@ type Restaurant = {
   closing_time: string | null;
   gallery_urls: string[] | string | null;
   menu_urls: string[] | string | null;
+  services: string[] | string | null; // <-- Ajout du champ services
   slug: string;
   category: string | null;
 };
@@ -22,6 +23,18 @@ type Restaurant = {
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
+
+// Map pour associer chaque identifiant de service à son libellé et son icône
+const SERVICES_MAP: Record<string, { label: string; icon: string }> = {
+  wifi: { label: "Wi-Fi", icon: "📶" },
+  parking: { label: "Parking", icon: "🅿️" },
+  ac: { label: "Climatisation", icon: "❄️" },
+  terrace: { label: "Terrasse", icon: "🌳" },
+  vip_room: { label: "Salon VIP", icon: "👔" },
+  live_music: { label: "Live", icon: "🎶" },
+  mobile_money: { label: "M-Pesa", icon: "📲" },
+  card_payment: { label: "Carte", icon: "💳" },
+};
 
 // Nettoie et formate le slug
 function sanitizeSlug(slug: string) {
@@ -115,6 +128,29 @@ export default async function RestaurantPage({ params }: PageProps) {
   }
 
   const r = restaurant as Restaurant;
+
+  // =========================================================
+  // SERVICES & ÉQUIPEMENTS
+  // =========================================================
+  let servicesList: string[] = [];
+  if (r.services) {
+    if (Array.isArray(r.services)) {
+      servicesList = r.services.filter(
+        (item) => typeof item === "string" && item.trim() !== ""
+      );
+    } else if (typeof r.services === "string") {
+      try {
+        const parsed = JSON.parse(r.services);
+        if (Array.isArray(parsed)) {
+          servicesList = parsed.filter(
+            (item) => typeof item === "string" && item.trim() !== ""
+          );
+        }
+      } catch {
+        servicesList = [];
+      }
+    }
+  }
 
   // =========================================================
   // GALERIE
@@ -245,6 +281,33 @@ export default async function RestaurantPage({ params }: PageProps) {
                 </p>
               </div>
             </div>
+
+            {/* SERVICES & ÉQUIPEMENTS */}
+            {servicesList.length > 0 && (
+              <section className="mt-10">
+                <h2 className="text-xl font-bold text-[#800020]">
+                  Services & Équipements
+                </h2>
+                <div className="mt-4 flex flex-wrap gap-2.5">
+                  {servicesList.map((serviceId) => {
+                    const service = SERVICES_MAP[serviceId] || {
+                      label: serviceId,
+                      icon: "✨",
+                    };
+
+                    return (
+                      <span
+                        key={serviceId}
+                        className="inline-flex items-center gap-2 rounded-full border border-[#800020]/15 bg-[#800020]/5 px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-[#800020]/10"
+                      >
+                        <span className="text-base">{service.icon}</span>
+                        <span>{service.label}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
 
             {/* GALERIE */}
             {galleryUrls.length > 0 && (
