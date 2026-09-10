@@ -15,7 +15,7 @@ type Restaurant = {
   closing_time: string | null;
   gallery_urls: string[] | string | null;
   menu_urls: string[] | string | null;
-  services: string[] | string | null; // <-- Ajout du champ services
+  services: string[] | string | null;
   slug: string;
   category: string | null;
 };
@@ -24,7 +24,7 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-// Map pour associer chaque identifiant de service à son libellé et son icône
+// Map des services avec clés en minuscules
 const SERVICES_MAP: Record<string, { label: string; icon: string }> = {
   wifi: { label: "Wi-Fi", icon: "📶" },
   parking: { label: "Parking", icon: "🅿️" },
@@ -130,24 +130,28 @@ export default async function RestaurantPage({ params }: PageProps) {
   const r = restaurant as Restaurant;
 
   // =========================================================
-  // SERVICES & ÉQUIPEMENTS
+  // SERVICES & ÉQUIPEMENTS (PARSING STRUCTURÉ)
   // =========================================================
   let servicesList: string[] = [];
   if (r.services) {
     if (Array.isArray(r.services)) {
-      servicesList = r.services.filter(
-        (item) => typeof item === "string" && item.trim() !== ""
-      );
+      servicesList = r.services
+        .map((item) => String(item).trim())
+        .filter((item) => item !== "");
     } else if (typeof r.services === "string") {
       try {
         const parsed = JSON.parse(r.services);
         if (Array.isArray(parsed)) {
-          servicesList = parsed.filter(
-            (item) => typeof item === "string" && item.trim() !== ""
-          );
+          servicesList = parsed
+            .map((item) => String(item).trim())
+            .filter((item) => item !== "");
+        } else if (r.services.trim() !== "") {
+          servicesList = [r.services.trim()];
         }
       } catch {
-        servicesList = [];
+        if (r.services.trim() !== "") {
+          servicesList = [r.services.trim()];
+        }
       }
     }
   }
@@ -289,15 +293,16 @@ export default async function RestaurantPage({ params }: PageProps) {
                   Services & Équipements
                 </h2>
                 <div className="mt-4 flex flex-wrap gap-2.5">
-                  {servicesList.map((serviceId) => {
-                    const service = SERVICES_MAP[serviceId] || {
-                      label: serviceId,
+                  {servicesList.map((serviceKey) => {
+                    const normalizedKey = serviceKey.toLowerCase().trim();
+                    const service = SERVICES_MAP[normalizedKey] || {
+                      label: serviceKey,
                       icon: "✨",
                     };
 
                     return (
                       <span
-                        key={serviceId}
+                        key={serviceKey}
                         className="inline-flex items-center gap-2 rounded-full border border-[#800020]/15 bg-[#800020]/5 px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-[#800020]/10"
                       >
                         <span className="text-base">{service.icon}</span>
