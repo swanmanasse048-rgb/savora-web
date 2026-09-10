@@ -15,7 +15,7 @@ type Restaurant = {
   closing_time: string | null;
   gallery_urls: string[] | string | null;
   menu_urls: string[] | string | null;
-  services: string[] | string | null;
+  services: any;
   slug: string;
   category: string | null;
 };
@@ -24,7 +24,6 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-// Map des services avec clés en minuscules
 const SERVICES_MAP: Record<string, { label: string; icon: string }> = {
   wifi: { label: "Wi-Fi", icon: "📶" },
   parking: { label: "Parking", icon: "🅿️" },
@@ -36,12 +35,10 @@ const SERVICES_MAP: Record<string, { label: string; icon: string }> = {
   card_payment: { label: "Carte", icon: "💳" },
 };
 
-// Nettoie et formate le slug
 function sanitizeSlug(slug: string) {
   return decodeURIComponent(slug).trim().toLowerCase();
 }
 
-// Génération dynamique des métadonnées SEO
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
@@ -72,14 +69,12 @@ export default async function RestaurantPage({ params }: PageProps) {
   const resolvedParams = await params;
   const cleanSlug = sanitizeSlug(resolvedParams.slug);
 
-  // Recherche insensible à la casse avec .ilike
   const { data: restaurant, error } = await supabase
     .from("restaurants")
     .select("*")
     .ilike("slug", cleanSlug)
     .maybeSingle();
 
-  // ERREUR SUPABASE
   if (error) {
     return (
       <main className="flex min-h-screen items-center justify-center p-6">
@@ -93,7 +88,6 @@ export default async function RestaurantPage({ params }: PageProps) {
     );
   }
 
-  // RESTAURANT INTROUVABLE
   if (!restaurant) {
     const { data: allRestaurants } = await supabase
       .from("restaurants")
@@ -130,29 +124,37 @@ export default async function RestaurantPage({ params }: PageProps) {
   const r = restaurant as Restaurant;
 
   // =========================================================
-  // SERVICES & ÉQUIPEMENTS (PARSING STRUCTURÉ)
+  // PARSER DES SERVICES (GÈRE LE FORMAT BRUT ENREGISTRÉ)
   // =========================================================
   let servicesList: string[] = [];
+
   if (r.services) {
-    if (Array.isArray(r.services)) {
-      servicesList = r.services
-        .map((item) => String(item).trim())
-        .filter((item) => item !== "");
-    } else if (typeof r.services === "string") {
-      try {
-        const parsed = JSON.parse(r.services);
-        if (Array.isArray(parsed)) {
-          servicesList = parsed
-            .map((item) => String(item).trim())
-            .filter((item) => item !== "");
-        } else if (r.services.trim() !== "") {
-          servicesList = [r.services.trim()];
-        }
-      } catch {
-        if (r.services.trim() !== "") {
-          servicesList = [r.services.trim()];
+    let rawData = r.services;
+
+    if (Array.isArray(rawData)) {
+      if (
+        rawData.length > 0 &&
+        typeof rawData[0] === "string" &&
+        rawData[0].trim().startsWith("[")
+      ) {
+        try {
+          rawData = JSON.parse(rawData[0]);
+        } catch {
+          // Utilise rawData tel quel si le parse échoue
         }
       }
+    } else if (typeof rawData === "string") {
+      try {
+        rawData = JSON.parse(rawData);
+      } catch {
+        rawData = [rawData];
+      }
+    }
+
+    if (Array.isArray(rawData)) {
+      servicesList = rawData
+        .map((item) => String(item).replace(/[\[\]\\"]/g, "").trim())
+        .filter((item) => item !== "");
     }
   }
 
