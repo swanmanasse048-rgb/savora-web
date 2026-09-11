@@ -124,12 +124,20 @@ export default async function RestaurantPage({ params }: PageProps) {
   const r = restaurant as Restaurant;
 
   // =========================================================
-  // PARSER DES SERVICES (GÈRE LE FORMAT BRUT ENREGISTRÉ)
+  // PARSER DES SERVICES (ROBUSTE BDD + FLUTTER / SUPABASE)
   // =========================================================
   let servicesList: string[] = [];
 
   if (r.services) {
     let rawData = r.services;
+
+    if (typeof rawData === "string") {
+      try {
+        rawData = JSON.parse(rawData);
+      } catch {
+        rawData = [rawData];
+      }
+    }
 
     if (Array.isArray(rawData)) {
       if (
@@ -140,21 +148,15 @@ export default async function RestaurantPage({ params }: PageProps) {
         try {
           rawData = JSON.parse(rawData[0]);
         } catch {
-          // Utilise rawData tel quel si le parse échoue
+          // Si l'élément imbriqué ne se parse pas
         }
       }
-    } else if (typeof rawData === "string") {
-      try {
-        rawData = JSON.parse(rawData);
-      } catch {
-        rawData = [rawData];
-      }
-    }
 
-    if (Array.isArray(rawData)) {
-      servicesList = rawData
-        .map((item) => String(item).replace(/[\[\]\\"]/g, "").trim())
-        .filter((item) => item !== "");
+      if (Array.isArray(rawData)) {
+        servicesList = rawData
+          .map((item) => String(item).replace(/[\[\]\\"]/g, "").trim())
+          .filter((item) => item.length > 0);
+      }
     }
   }
 
