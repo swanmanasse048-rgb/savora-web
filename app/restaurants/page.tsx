@@ -1,21 +1,37 @@
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import { Metadata } from "next";
 
-// 1. Empêche Next.js de garder la liste en cache statique (rendu temps réel)
+export const metadata: Metadata = {
+  title: "Nos Restaurants Partners | Savora",
+  description:
+    "Découvrez la liste des restaurants disponibles sur Savora et trouvez votre prochaine expérience culinaire.",
+};
+
+// Impêche le cache statique pour garder les données en temps réel
 export const revalidate = 0;
 
+type RestaurantListItem = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  address: string | null;
+  image_url: string | null;
+  category: string | null;
+};
+
 export default async function RestaurantsPage() {
-  // 2. Sélection des champs explicites pour optimiser les performances au lieu de "*"
   const { data: restaurants, error } = await supabase
     .from("restaurants")
     .select("id, name, slug, description, address, image_url, category")
-    .eq("status", "approved") // Seuls les restaurants validés par l'admin
+    .eq("status", "approved")
     .order("created_at", { ascending: false });
 
   if (error) {
     return (
-      <main className="min-h-screen p-8">
+      <main className="min-h-screen p-8 bg-white">
         <div className="mx-auto max-w-7xl">
           <h1 className="text-3xl font-bold text-[#800020]">
             Restaurants
@@ -29,13 +45,13 @@ export default async function RestaurantsPage() {
     );
   }
 
+  const restaurantList = (restaurants || []) as RestaurantListItem[];
+
   return (
     <main className="min-h-screen bg-white">
-
       {/* HEADER */}
       <section className="border-b border-[#800020]/10 bg-[#800020]/5">
         <div className="mx-auto max-w-7xl px-6 py-16">
-
           <p className="text-sm font-semibold uppercase tracking-widest text-[#800020]">
             Savora
           </p>
@@ -45,38 +61,31 @@ export default async function RestaurantsPage() {
           </h1>
 
           <p className="mt-5 max-w-2xl text-lg leading-8 text-gray-600">
-            Découvrez les restaurants disponibles sur Savora
-            et trouvez votre prochaine expérience.
+            Découvrez les restaurants disponibles sur Savora et trouvez votre
+            prochaine expérience.
           </p>
-
         </div>
       </section>
 
       {/* LISTE */}
       <section className="mx-auto max-w-7xl px-6 py-12">
-
         <div className="mb-8 flex items-center justify-between">
           <p className="text-gray-500 font-medium">
-            {restaurants?.length || 0} restaurant
-            {restaurants?.length !== 1 ? "s" : ""}
+            {restaurantList.length} restaurant
+            {restaurantList.length !== 1 ? "s" : ""}
           </p>
         </div>
 
-        {restaurants && restaurants.length > 0 ? (
-
+        {restaurantList.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-
-            {restaurants.map((restaurant) => (
-
+            {restaurantList.map((restaurant) => (
               <Link
                 key={restaurant.id}
                 href={`/restaurant/${restaurant.slug}`}
                 className="group overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[#800020]/20 hover:shadow-xl"
               >
-
                 {/* IMAGE */}
                 <div className="relative h-64 overflow-hidden bg-gray-100">
-
                   {restaurant.image_url ? (
                     <Image
                       src={restaurant.image_url}
@@ -96,12 +105,10 @@ export default async function RestaurantsPage() {
                       {restaurant.category}
                     </span>
                   )}
-
                 </div>
 
                 {/* INFOS */}
                 <div className="p-6">
-
                   <h2 className="text-xl font-bold text-gray-900 transition group-hover:text-[#800020]">
                     {restaurant.name}
                   </h2>
@@ -121,56 +128,38 @@ export default async function RestaurantsPage() {
                   <div className="mt-5 font-semibold text-[#800020] transition group-hover:translate-x-1">
                     Découvrir →
                   </div>
-
                 </div>
-
               </Link>
-
             ))}
-
           </div>
-
         ) : (
-
           <div className="rounded-3xl border border-dashed border-[#800020]/20 bg-[#800020]/5 p-12 text-center">
-
-            <div className="text-5xl">
-              🍽️
-            </div>
+            <div className="text-5xl">🍽️</div>
 
             <h2 className="mt-5 text-2xl font-bold text-gray-900">
               Aucun restaurant pour le moment
             </h2>
 
             <p className="mt-3 text-gray-500">
-              Les restaurants partenaires de Savora
-              apparaîtront ici.
+              Les restaurants partenaires de Savora apparaîtront ici.
             </p>
-
           </div>
-
         )}
-
       </section>
 
       {/* CTA */}
       <section className="bg-gradient-to-r from-[#800020] to-[#500014] text-white">
-
         <div className="mx-auto max-w-4xl px-6 py-20 text-center">
-
           <h2 className="text-3xl font-black md:text-4xl">
             Vous êtes un restaurant ?
           </h2>
 
           <p className="mx-auto mt-4 max-w-xl text-white/80">
-            Rejoignez Savora et permettez à vos clients
-            de découvrir votre établissement.
+            Rejoignez Savora et permettez à vos clients de découvrir votre
+            établissement.
           </p>
-
         </div>
-
       </section>
-
     </main>
   );
 }
