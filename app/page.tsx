@@ -149,11 +149,14 @@ export default async function Home() {
           <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {restaurants.map((restaurant) => {
               const rating = ratingsByRestaurant[restaurant.id];
+              const targetSlug = encodeURIComponent(
+                restaurant.slug || restaurant.id
+              );
 
               return (
                 <Link
                   key={restaurant.id}
-                  href={`/restaurant/${restaurant.slug || restaurant.id}`}
+                  href={`/restaurants/${targetSlug}`}
                   className="group flex flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1.5 hover:border-[#800020]/20 hover:shadow-2xl"
                 >
                   {/* IMAGE */}
