@@ -39,6 +39,98 @@ function sanitizeSlug(slug: string) {
   return decodeURIComponent(slug).trim().toLowerCase();
 }
 
+/**
+  Parser universel ultra-robuste pour `services`
+ */
+function parseServices(raw: any): string[] {
+  if (!raw) return [];
+
+  let items: string[] = [];
+
+  // Si c'est déjà un tableau JS/TS
+  if (Array.isArray(raw)) {
+    items = raw.flatMap((item) => {
+      if (typeof item === "string") {
+        // Gère le cas où un élément du tableau est lui-même une chaîne JSON ou PostgreSQL array literal
+        if (item.startsWith("[") || item.startsWith("{")) {
+          return parseServices(item);
+        }
+        return item;
+      }
+      return String(item);
+    });
+  } else if (typeof raw === "string") {
+    const trimmed = raw.trim();
+
+    // Cas 1: PostgreSQL literal array syntax `{"wifi", "parking"}` ou `{wifi,parking}`
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      items = trimmed
+        .slice(1, -1)
+        .split(",")
+        .map((s) => s.replace(/^"|"$/g, "").trim());
+    } 
+    // Cas 2: Chaîne JSON `["wifi", "parking"]`
+    else if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return parseServices(parsed);
+      } catch {
+        items = [trimmed];
+      }
+    } 
+    // Cas 3: Simple chaîne séparée par des virgules ou mot unique
+    else {
+      items = trimmed.split(",").map((s) => s.trim());
+    }
+  }
+
+  // Nettoyage final : suppression des guillemets, crochets, espaces et doublons
+  return Array.from(
+    new Set(
+      items
+        .map((i) =>
+          String(i)
+            .replace(/[\[\]\\"{}]/g, "")
+            .trim()
+            .toLowerCase()
+        )
+        .filter((i) => i.length > 0)
+    )
+  );
+}
+
+/**
+  Parser universel pour les URLs (Galerie / Menu)
+ */
+function parseUrls(raw: any): string[] {
+  if (!raw) return [];
+
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => String(item).trim())
+      .filter((url) => url.length > 0);
+  }
+
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((item) => String(item).trim())
+            .filter((url) => url.length > 0);
+        }
+      } catch {
+        // En cas d'erreur de parse, retourner l'élément brut s'il n'est pas vide
+      }
+    }
+    if (trimmed.length > 0) return [trimmed];
+  }
+
+  return [];
+}
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
@@ -123,92 +215,10 @@ export default async function RestaurantPage({ params }: PageProps) {
 
   const r = restaurant as Restaurant;
 
-  // =========================================================
-  // PARSER DES SERVICES (GÈRE LE FORMAT FLUTTER / BDD / JSON)
-  // =========================================================
-  let servicesList: string[] = [];
-
-  if (r.services) {
-    let rawData = r.services;
-
-    if (typeof rawData === "string") {
-      try {
-        rawData = JSON.parse(rawData);
-      } catch {
-        rawData = [rawData];
-      }
-    }
-
-    if (Array.isArray(rawData)) {
-      if (
-        rawData.length > 0 &&
-        typeof rawData[0] === "string" &&
-        rawData[0].trim().startsWith("[")
-      ) {
-        try {
-          rawData = JSON.parse(rawData[0]);
-        } catch {
-          // Si le parse d'élément imbriqué échoue
-        }
-      }
-
-      if (Array.isArray(rawData)) {
-        servicesList = rawData
-          .map((item) => String(item).replace(/[\[\]\\"]/g, "").trim())
-          .filter((item) => item.length > 0);
-      }
-    }
-  }
-
-  // =========================================================
-  // GALERIE
-  // =========================================================
-  let galleryUrls: string[] = [];
-  if (r.gallery_urls) {
-    if (Array.isArray(r.gallery_urls)) {
-      galleryUrls = r.gallery_urls.filter(
-        (url) => typeof url === "string" && url.trim() !== ""
-      );
-    } else if (typeof r.gallery_urls === "string") {
-      try {
-        const parsed = JSON.parse(r.gallery_urls);
-        if (Array.isArray(parsed)) {
-          galleryUrls = parsed.filter(
-            (url) => typeof url === "string" && url.trim() !== ""
-          );
-        }
-      } catch {
-        galleryUrls = [];
-      }
-    }
-  }
-
-  // =========================================================
-  // MENU
-  // =========================================================
-  let menuUrls: string[] = [];
-  if (r.menu_urls) {
-    if (Array.isArray(r.menu_urls)) {
-      menuUrls = r.menu_urls.filter(
-        (url) => typeof url === "string" && url.trim() !== ""
-      );
-    } else if (typeof r.menu_urls === "string") {
-      try {
-        const parsed = JSON.parse(r.menu_urls);
-        if (Array.isArray(parsed)) {
-          menuUrls = parsed.filter(
-            (url) => typeof url === "string" && url.trim() !== ""
-          );
-        } else if (r.menu_urls.trim() !== "") {
-          menuUrls = [r.menu_urls];
-        }
-      } catch {
-        if (r.menu_urls.trim() !== "") {
-          menuUrls = [r.menu_urls];
-        }
-      }
-    }
-  }
+  // Extraction sécurisée des collections
+  const servicesList = parseServices(r.services);
+  const galleryUrls = parseUrls(r.gallery_urls);
+  const menuUrls = parseUrls(r.menu_urls);
 
   return (
     <main className="min-h-screen bg-white">
@@ -290,7 +300,7 @@ export default async function RestaurantPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* SERVICES & ÉQUIPEMENTS (NOUVELLE INTERFACE MODERNISÉE) */}
+            {/* SERVICES & ÉQUIPEMENTS */}
             {servicesList.length > 0 && (
               <section className="mt-12">
                 <div className="flex items-center justify-between">
@@ -309,9 +319,8 @@ export default async function RestaurantPage({ params }: PageProps) {
 
                 <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                   {servicesList.map((serviceKey) => {
-                    const normalizedKey = serviceKey.toLowerCase().trim();
-                    const service = SERVICES_MAP[normalizedKey] || {
-                      label: serviceKey,
+                    const service = SERVICES_MAP[serviceKey] || {
+                      label: serviceKey.charAt(0).toUpperCase() + serviceKey.slice(1),
                       icon: "✨",
                     };
 
