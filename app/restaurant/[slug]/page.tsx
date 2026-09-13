@@ -30,9 +30,9 @@ const SERVICES_MAP: Record<string, { label: string; icon: string }> = {
   ac: { label: "Climatisation", icon: "❄️" },
   terrace: { label: "Terrasse", icon: "🌳" },
   vip_room: { label: "Salon VIP", icon: "👔" },
-  live_music: { label: "Live", icon: "🎶" },
-  mobile_money: { label: "M-Pesa", icon: "📲" },
-  card_payment: { label: "Carte", icon: "💳" },
+  live_music: { label: "Live Music", icon: "🎶" },
+  mobile_money: { label: "M-Pesa / Mobile", icon: "📲" },
+  card_payment: { label: "Carte Bancaire", icon: "💳" },
 };
 
 function sanitizeSlug(slug: string) {
@@ -124,7 +124,7 @@ export default async function RestaurantPage({ params }: PageProps) {
   const r = restaurant as Restaurant;
 
   // =========================================================
-  // PARSER DES SERVICES (ROBUSTE BDD + FLUTTER / SUPABASE)
+  // PARSER DES SERVICES (GÈRE LE FORMAT FLUTTER / BDD / JSON)
   // =========================================================
   let servicesList: string[] = [];
 
@@ -148,7 +148,7 @@ export default async function RestaurantPage({ params }: PageProps) {
         try {
           rawData = JSON.parse(rawData[0]);
         } catch {
-          // Si l'élément imbriqué ne se parse pas
+          // Si le parse d'élément imbriqué échoue
         }
       }
 
@@ -290,13 +290,24 @@ export default async function RestaurantPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* SERVICES & ÉQUIPEMENTS */}
+            {/* SERVICES & ÉQUIPEMENTS (NOUVELLE INTERFACE MODERNISÉE) */}
             {servicesList.length > 0 && (
-              <section className="mt-10">
-                <h2 className="text-xl font-bold text-[#800020]">
-                  Services & Équipements
-                </h2>
-                <div className="mt-4 flex flex-wrap gap-2.5">
+              <section className="mt-12">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Services & Équipements
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Ce que cet établissement met à votre disposition
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-[#800020]/10 px-3.5 py-1.5 text-xs font-semibold text-[#800020]">
+                    {servicesList.length} service{servicesList.length > 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                   {servicesList.map((serviceKey) => {
                     const normalizedKey = serviceKey.toLowerCase().trim();
                     const service = SERVICES_MAP[normalizedKey] || {
@@ -305,13 +316,35 @@ export default async function RestaurantPage({ params }: PageProps) {
                     };
 
                     return (
-                      <span
+                      <div
                         key={serviceKey}
-                        className="inline-flex items-center gap-2 rounded-full border border-[#800020]/15 bg-[#800020]/5 px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-[#800020]/10"
+                        className="group relative flex flex-col items-center justify-center rounded-2xl border border-gray-100 bg-white p-5 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#800020]/30 hover:bg-[#800020]/[0.02] hover:shadow-md"
                       >
-                        <span className="text-base">{service.icon}</span>
-                        <span>{service.label}</span>
-                      </span>
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#800020]/5 text-2xl transition duration-300 group-hover:scale-110 group-hover:bg-[#800020] group-hover:text-white">
+                          <span>{service.icon}</span>
+                        </div>
+
+                        <span className="mt-3 text-sm font-semibold text-gray-800 transition group-hover:text-[#800020]">
+                          {service.label}
+                        </span>
+
+                        <span className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-emerald-600">
+                          <svg
+                            className="h-3 w-3"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={3}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                          Inclus
+                        </span>
+                      </div>
                     );
                   })}
                 </div>
