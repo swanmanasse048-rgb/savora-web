@@ -36,7 +36,10 @@ const SERVICES_MAP: Record<string, { label: string; icon: string }> = {
 };
 
 function sanitizeSlug(slug: string) {
-  return decodeURIComponent(slug).trim().toLowerCase();
+  return decodeURIComponent(slug)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-");
 }
 
 // Fonction robuste pour récupérer un restaurant par slug ou par ID
