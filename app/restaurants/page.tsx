@@ -80,7 +80,7 @@ export default async function RestaurantsPage() {
             {restaurantList.map((restaurant) => (
               <Link
                 key={restaurant.id}
-                href={`/restaurants/${restaurant.slug}`}
+                href={`/restaurants/${restaurant.slug || restaurant.id}`}
                 className="group relative flex flex-col overflow-hidden rounded-3xl bg-white border border-gray-100 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#800020]/30 hover:shadow-xl"
               >
                 {/* IMAGE */}

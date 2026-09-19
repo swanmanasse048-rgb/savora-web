@@ -28,7 +28,7 @@ const SERVICES_MAP: Record<string, { label: string; icon: string }> = {
   wifi: { label: "Wi-Fi", icon: "📶" },
   parking: { label: "Parking", icon: "🅿️" },
   ac: { label: "Climatisation", icon: "❄️" },
-  terrace: { label: "Terrasse", icon: "🌳" },
+  terrasse: { label: "Terrasse", icon: "🌳" },
   vip_room: { label: "Salon VIP", icon: "👔" },
   live_music: { label: "Live Music", icon: "🎶" },
   mobile_money: { label: "M-Pesa / Mobile", icon: "📲" },
@@ -37,9 +37,12 @@ const SERVICES_MAP: Record<string, { label: string; icon: string }> = {
 
 function sanitizeSlug(slug: string) {
   return decodeURIComponent(slug)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, "-");
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 // Fonction robuste pour récupérer un restaurant par slug ou par ID
