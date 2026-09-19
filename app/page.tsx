@@ -149,9 +149,9 @@ export default async function Home() {
           <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {restaurants.map((restaurant) => {
               const rating = ratingsByRestaurant[restaurant.id];
-              const targetSlug = encodeURIComponent(
-                restaurant.slug || restaurant.id
-              );
+              const targetSlug = restaurant.slug
+                ? restaurant.slug.toLowerCase().trim().replace(/\s+/g, '-')
+                : restaurant.id;
 
               return (
                 <Link
