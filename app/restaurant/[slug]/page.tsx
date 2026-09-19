@@ -39,6 +39,38 @@ function sanitizeSlug(slug: string) {
   return decodeURIComponent(slug).trim().toLowerCase();
 }
 
+// Fonction robuste pour récupérer un restaurant par slug ou par ID
+async function getRestaurant(rawSlug: string) {
+  const cleanSlug = sanitizeSlug(rawSlug);
+
+  // 1. Essayer de trouver par slug exact
+  let { data: restaurant } = await supabase
+    .from("restaurants")
+    .select("*")
+    .eq("slug", cleanSlug)
+    .maybeSingle();
+
+  if (restaurant) return restaurant as Restaurant;
+
+  // 2. Si non trouvé, essayer avec un filtre insensible à la casse (.ilike)
+  const { data: restaurantLike } = await supabase
+    .from("restaurants")
+    .select("*")
+    .ilike("slug", cleanSlug)
+    .maybeSingle();
+
+  if (restaurantLike) return restaurantLike as Restaurant;
+
+  // 3. Enfin, essayer de chercher par ID si le slug correspond à un ID UUID
+  const { data: restaurantById } = await supabase
+    .from("restaurants")
+    .select("*")
+    .eq("id", cleanSlug)
+    .maybeSingle();
+
+  return restaurantById as Restaurant | null;
+}
+
 function parseServices(raw: any): string[] {
   if (!raw) return [];
   let items: string[] = [];
@@ -108,13 +140,7 @@ function parseUrls(raw: any): string[] {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolvedParams = await params;
-  const cleanSlug = sanitizeSlug(resolvedParams.slug);
-
-  const { data: restaurant } = await supabase
-    .from("restaurants")
-    .select("name, description")
-    .or(`slug.ilike.${cleanSlug},id.eq.${cleanSlug}`)
-    .maybeSingle();
+  const restaurant = await getRestaurant(resolvedParams.slug);
 
   if (!restaurant) {
     return { title: "Restaurant introuvable | Savora" };
@@ -128,15 +154,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function RestaurantPage({ params }: PageProps) {
   const resolvedParams = await params;
-  const cleanSlug = sanitizeSlug(resolvedParams.slug);
+  const restaurant = await getRestaurant(resolvedParams.slug);
 
-  const { data: restaurant, error } = await supabase
-    .from("restaurants")
-    .select("*")
-    .or(`slug.ilike.${cleanSlug},id.eq.${cleanSlug}`)
-    .maybeSingle();
-
-  if (error || !restaurant) {
+  if (!restaurant) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
         <div className="text-center max-w-md">
@@ -152,7 +172,7 @@ export default async function RestaurantPage({ params }: PageProps) {
     );
   }
 
-  const r = restaurant as Restaurant;
+  const r = restaurant;
   const servicesList = parseServices(r.services);
   const galleryUrls = parseUrls(r.gallery_urls);
   const menuUrls = parseUrls(r.menu_urls);
