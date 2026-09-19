@@ -145,6 +145,7 @@ export default async function RestaurantPage({ params }: PageProps) {
 
   return (
     <main className="min-h-screen bg-[#FAFAFA]">
+      {/* En-tête avec image de couverture, catégorie, nom et adresse */}
       <section className="relative h-[420px] w-full bg-gray-900 overflow-hidden">
         {restaurant.image_url ? (
           <Image src={restaurant.image_url} alt={restaurant.name} fill priority className="object-cover" />
@@ -155,13 +156,15 @@ export default async function RestaurantPage({ params }: PageProps) {
         <div className="absolute bottom-0 left-0 right-0">
           <div className="mx-auto max-w-6xl px-6 pb-10">
             {restaurant.category && (
-              <span className="inline-block mb-3 rounded-full bg-[#800020] px-4 py-1.5 text-xs font-semibold text-white uppercase">
+              <span className="inline-block mb-3 rounded-full bg-[#800020] px-4 py-1.5 text-xs font-semibold text-white uppercase tracking-wider">
                 {restaurant.category}
               </span>
             )}
             <h1 className="text-4xl font-extrabold text-white md:text-5xl">{restaurant.name}</h1>
             {restaurant.address && (
-              <p className="mt-2 text-base text-gray-200">📍 {restaurant.address}</p>
+              <p className="mt-2 text-base text-gray-200 flex items-center gap-2">
+                <span>📍</span> {restaurant.address}
+              </p>
             )}
           </div>
         </div>
@@ -170,6 +173,8 @@ export default async function RestaurantPage({ params }: PageProps) {
       <section className="mx-auto max-w-6xl px-6 py-12">
         <div className="grid gap-12 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-12">
+            
+            {/* Description */}
             <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
               <h2 className="text-xl font-bold text-gray-900 border-l-4 border-[#800020] pl-3">
                 À propos de l'établissement
@@ -179,6 +184,55 @@ export default async function RestaurantPage({ params }: PageProps) {
               </p>
             </div>
 
+            {/* Horaires et Localisation */}
+            {(restaurant.opening_time || restaurant.closing_time) && (
+              <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+                <h2 className="text-xl font-bold text-gray-900 border-l-4 border-[#800020] pl-3 mb-4">
+                  Horaires d'ouverture
+                </h2>
+                <p className="text-gray-600">
+                  🕒 Ouvert de <span className="font-semibold text-gray-900">{restaurant.opening_time || "N/A"}</span> à <span className="font-semibold text-gray-900">{restaurant.closing_time || "N/A"}</span>
+                </p>
+              </div>
+            )}
+
+            {/* Galerie Photos */}
+            {galleryUrls.length > 0 && (
+              <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+                <h2 className="text-xl font-bold text-gray-900 border-l-4 border-[#800020] pl-3 mb-6">
+                  Galerie Photos
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {galleryUrls.map((url, index) => (
+                    <div key={index} className="relative h-36 rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+                      <Image src={url} alt={`${restaurant.name} - photo ${index + 1}`} fill className="object-cover hover:scale-105 transition duration-300" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Menus du restaurant */}
+            {menuUrls.length > 0 && (
+              <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+                <h2 className="text-xl font-bold text-gray-900 border-l-4 border-[#800020] pl-3 mb-6">
+                  Menus & Carte
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {menuUrls.map((url, index) => (
+                    <a key={index} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:bg-gray-100 transition">
+                      <span className="text-2xl">📄</span>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Voir le menu #{index + 1}</p>
+                        <p className="text-xs text-gray-500">Ouvrir le document</p>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Services & Commodités */}
             {servicesList.length > 0 && (
               <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
                 <h2 className="text-xl font-bold text-gray-900 border-l-4 border-[#800020] pl-3 mb-6">
@@ -199,6 +253,7 @@ export default async function RestaurantPage({ params }: PageProps) {
             )}
           </div>
 
+          {/* Formulaire de réservation fixe sur le côté */}
           <aside className="space-y-6 lg:sticky lg:top-6 self-start">
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
               <h3 className="text-lg font-bold text-gray-900 mb-4 pb-4 border-b border-gray-100">Réserver une table</h3>
