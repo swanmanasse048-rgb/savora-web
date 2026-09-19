@@ -1,258 +1,166 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import Link from "next/link";
-import { supabase } from "@/lib/supabase";
-import { User } from "@supabase/supabase-js";
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
-type ReservationFormProps = {
-  restaurantId: string;
-  restaurantName?: string;
-};
+interface Table {
+  id: string;
+  name: string;
+  capacity?: number;
+}
 
-export default function ReservationForm({
-  restaurantId,
-  restaurantName,
-}: ReservationFormProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const [user, setUser] = useState<User | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
-
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const [guests, setGuests] = useState(2);
-  const [specialRequests, setSpecialRequests] = useState("");
-
+export default function ReservationForm({ restaurantId, restaurantName }: { restaurantId: string; restaurantName: string }) {
+  const [fulfillmentType, setFulfillmentType] = useState<'sur_place' | 'a_emporter'>('sur_place');
+  const [tables, setTables] = useState<Table[]>([]);
+  const [selectedTableId, setSelectedTableId] = useState<string>('');
+  const [clientName, setClientName] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  // Vérification de la session utilisateur
+  // Charger les tables disponibles pour ce restaurant
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      setLoadingUser(false);
-    };
+    async function fetchTables() {
+      const { data, error } = await supabase
+        .from('tables')
+        .select('id, name, capacity')
+        .eq('restaurant_id', restaurantId);
 
-    checkUser();
+      if (!error && data) {
+        setTables(data);
+      }
+    }
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+    if (restaurantId) {
+      fetchTables();
+    }
+  }, [restaurantId]);
 
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  const handleReservation = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setMessage(null);
-
-    if (!date || !time) {
-      setMessage({ type: "error", text: "Veuillez choisir une date et une heure." });
-      return;
-    }
-
-    if (!user) {
-      router.push(`/login?redirectTo=${encodeURIComponent(pathname)}`);
-      return;
-    }
-
     setLoading(true);
 
     try {
-      // 1. Insertion de la réservation et récupération de l'ID généré
-      const { data: reservationData, error: reservationError } = await supabase
-        .from("reservations")
-        .insert([
-          {
-            user_id: user.id,
-            restaurant_id: restaurantId,
-            reservation_date: date,
-            reservation_time: time,
-            guests: guests,
-            special_request: specialRequests.trim() || null,
-            status: "pending",
-          },
-        ])
-        .select()
-        .single();
-
-      if (reservationError) {
-        console.error("Erreur réservation :", reservationError);
-        setMessage({
-          type: "error",
-          text: `Impossible d'effectuer la réservation : ${reservationError.message}`,
-        });
-        setLoading(false);
-        return;
-      }
-
-      // 2. Récupération du gérant du restaurant (owner_id)
-      const { data: restaurantData, error: restaurantError } = await supabase
-        .from("restaurants")
-        .select("owner_id, name")
-        .eq("id", restaurantId)
-        .single();
-
-      if (restaurantError) {
-        console.error("Erreur récupération restaurant :", restaurantError);
-      }
-
-      // 3. Envoi de la notification au gérant
-      if (restaurantData?.owner_id) {
-        const clientName = user.user_metadata?.full_name || user.email || "Un client";
-        const name = restaurantName || restaurantData.name || "votre établissement";
-
-        const { error: notifError } = await supabase.from("notifications").insert([
-          {
-            user_id: restaurantData.owner_id,
-            restaurant_id: restaurantId,
-            reservation_id: reservationData.id,
-            title: "Nouvelle réservation ! 🍽️",
-            message: `${clientName} a réservé une table pour ${guests} pers. chez ${name} le ${date} à ${time}.`,
-            type: "new_reservation",
-            is_read: false,
-          },
-        ]);
-
-        if (notifError) {
-          console.error("Erreur lors de l'envoi de la notification :", notifError);
-        }
-      }
-
-      setMessage({
-        type: "success",
-        text: `Votre demande de réservation ${restaurantName ? `chez ${restaurantName}` : ""} a été envoyée avec succès 🎉`,
+      const { error } = await supabase.from('orders').insert({
+        restaurant_id: restaurantId,
+        client_name: clientName,
+        phone: phone,
+        order_type: fulfillmentType,
+        table_id: fulfillmentType === 'sur_place' ? selectedTableId || null : null,
+        status: 'pending',
+        total_amount: 0, // À adapter selon votre panier d'articles
       });
 
-      setDate("");
-      setTime("");
-      setGuests(2);
-      setSpecialRequests("");
-    } catch (err) {
-      console.error("Erreur inattendue :", err);
-      setMessage({ type: "error", text: "Une erreur inattendue est survenue." });
+      if (error) throw error;
+
+      setSuccess(true);
+      setClientName('');
+      setPhone('');
+      setSelectedTableId('');
+    } catch (err: any) {
+      alert("Erreur lors de l'enregistrement : " + err.message);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-  };
-
-  if (loadingUser) {
-    return (
-      <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-xl text-center text-sm text-gray-500">
-        Chargement du formulaire...
-      </div>
-    );
   }
 
   return (
-    <div className="rounded-3xl border border-[#800020]/10 bg-white p-6 shadow-xl">
-      <h3 className="text-xl font-bold text-gray-900">
-        Réserver une table {restaurantName ? `chez ${restaurantName}` : ""}
-      </h3>
+    <div className="rounded-3xl border border-[#800020]/15 bg-white p-6 shadow-lg">
+      <h3 className="text-xl font-bold text-gray-900 mb-4">Commander / Réserver</h3>
 
-      {message && (
-        <div
-          className={`mt-4 rounded-2xl p-4 text-sm font-medium ${
-            message.type === "success"
-              ? "bg-[#800020]/10 text-[#800020] border border-[#800020]/20"
-              : "bg-red-50 text-red-600 border border-red-100"
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
-
-      {!user ? (
-        <div className="mt-6 rounded-2xl bg-[#800020]/5 p-6 text-center border border-[#800020]/10">
-          <p className="text-sm text-gray-700">
-            Vous devez être connecté à votre compte Savora pour effectuer une réservation.
-          </p>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <Link
-              href={`/login?redirectTo=${encodeURIComponent(pathname)}`}
-              className="rounded-full bg-[#800020] px-6 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#600018]"
-            >
-              Se connecter
-            </Link>
-            <Link
-              href="/register"
-              className="rounded-full border border-gray-200 px-6 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-            >
-              Créer un compte
-            </Link>
-          </div>
+      {success ? (
+        <div className="rounded-2xl bg-emerald-50 p-4 text-center text-emerald-800">
+          <p className="font-semibold">Commande / Réservation envoyée !</p>
+          <p className="text-sm mt-1">Le restaurant va la traiter rapidement.</p>
+          <button
+            onClick={() => setSuccess(false)}
+            className="mt-4 text-xs font-bold underline text-[#800020]"
+          >
+            Faire une autre commande
+          </button>
         </div>
       ) : (
-        <form onSubmit={handleReservation} className="mt-6 space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Date
-            </label>
-            <input
-              type="date"
-              required
-              min={new Date().toISOString().split("T")[0]}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="mt-1 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:border-[#800020] focus:outline-none focus:ring-2 focus:ring-[#800020]/20"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Heure
-            </label>
-            <input
-              type="time"
-              required
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="mt-1 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:border-[#800020] focus:outline-none focus:ring-2 focus:ring-[#800020]/20"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Nombre de personnes
-            </label>
-            <select
-              value={guests}
-              onChange={(e) => setGuests(Number(e.target.value))}
-              className="mt-1 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:border-[#800020] focus:outline-none focus:ring-2 focus:ring-[#800020]/20"
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Choix du mode */}
+          <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setFulfillmentType('sur_place')}
+              className={`py-2 text-sm font-semibold rounded-lg transition-all ${
+                fulfillmentType === 'sur_place' ? 'bg-[#800020] text-white shadow' : 'text-gray-600'
+              }`}
             >
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                <option key={num} value={num}>
-                  {num} {num === 1 ? "personne" : "personnes"}
-                </option>
-              ))}
-            </select>
+              Sur place
+            </button>
+            <button
+              type="button"
+              onClick={() => setFulfillmentType('a_emporter')}
+              className={`py-2 text-sm font-semibold rounded-lg transition-all ${
+                fulfillmentType === 'a_emporter' ? 'bg-[#800020] text-white shadow' : 'text-gray-600'
+              }`}
+            >
+              À emporter
+            </button>
           </div>
 
+          {/* Sélection de la table si "Sur place" */}
+          {fulfillmentType === 'sur_place' && (
+            <div>
+              <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
+                Choisir une table
+              </label>
+              <select
+                value={selectedTableId}
+                onChange={(e) => setSelectedTableId(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none"
+                required={fulfillmentType === 'sur_place'}
+              >
+                <option value="">-- Sélectionnez une table --</option>
+                {tables.map((table) => (
+                  <option key={table.id} value={table.id}>
+                    Table : {table.name} {table.capacity ? `(${table.capacity} pers.)` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Nom du client */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Demande spéciale <span className="text-gray-400 font-normal">(Optionnel)</span>
+            <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
+              Votre Nom
             </label>
-            <textarea
-              rows={3}
-              value={specialRequests}
-              onChange={(e) => setSpecialRequests(e.target.value)}
-              placeholder="Ex: Anniversaire, chaise haute, table en terrasse..."
-              className="mt-1 w-full resize-none rounded-2xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:border-[#800020] focus:outline-none focus:ring-2 focus:ring-[#800020]/20"
+            <input
+              type="text"
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+              placeholder="Ex: Manasse Swan"
+              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none"
+              required
+            />
+          </div>
+
+          {/* Téléphone */}
+          <div>
+            <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
+              Téléphone
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Ex: +243..."
+              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none"
+              required
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-full bg-[#800020] py-3.5 px-4 text-sm font-semibold text-white shadow-md transition hover:bg-[#600018] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-full bg-[#800020] py-3 text-center font-semibold text-white transition hover:bg-[#600018] disabled:opacity-50"
           >
-            {loading ? "Envoi en cours..." : "Confirmer la réservation"}
+            {loading ? 'Validation en cours...' : 'Confirmer la commande'}
           </button>
         </form>
       )}
