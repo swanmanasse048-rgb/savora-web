@@ -18,6 +18,7 @@ type Restaurant = {
   services: any;
   slug: string;
   category: string | null;
+  status: string | null;
 };
 
 interface PageProps {
@@ -45,15 +46,16 @@ function sanitizeSlug(slug: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-// Fonction robuste pour récupérer un restaurant par slug ou par ID
+// Fonction robuste pour récupérer un restaurant approuvé par slug ou par ID
 async function getRestaurant(rawSlug: string) {
   const cleanSlug = sanitizeSlug(rawSlug);
 
-  // 1. Essayer de trouver par slug exact
+  // 1. Essayer de trouver par slug exact (statut approved)
   let { data: restaurant } = await supabase
     .from("restaurants")
     .select("*")
     .eq("slug", cleanSlug)
+    .eq("status", "approved")
     .maybeSingle();
 
   if (restaurant) return restaurant as Restaurant;
@@ -63,6 +65,7 @@ async function getRestaurant(rawSlug: string) {
     .from("restaurants")
     .select("*")
     .ilike("slug", cleanSlug)
+    .eq("status", "approved")
     .maybeSingle();
 
   if (restaurantLike) return restaurantLike as Restaurant;
@@ -72,6 +75,7 @@ async function getRestaurant(rawSlug: string) {
     .from("restaurants")
     .select("*")
     .eq("id", cleanSlug)
+    .eq("status", "approved")
     .maybeSingle();
 
   return restaurantById as Restaurant | null;
