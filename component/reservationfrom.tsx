@@ -9,12 +9,23 @@ interface Table {
   capacity?: number;
 }
 
-export default function ReservationForm({ restaurantId, restaurantName }: { restaurantId: string; restaurantName: string }) {
+interface ReservationFormProps {
+  restaurantId: string;
+  restaurantName: string;
+}
+
+export default function ReservationForm({ restaurantId, restaurantName }: ReservationFormProps) {
   const [fulfillmentType, setFulfillmentType] = useState<'sur_place' | 'a_emporter'>('sur_place');
   const [tables, setTables] = useState<Table[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<string>('');
+  
   const [clientName, setClientName] = useState('');
   const [phone, setPhone] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [guests, setGuests] = useState('2');
+  const [specialRequest, setSpecialRequest] = useState('');
+  
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -41,14 +52,20 @@ export default function ReservationForm({ restaurantId, restaurantName }: { rest
     setLoading(true);
 
     try {
+      // Enregistrement de la commande / réservation dans Supabase
       const { error } = await supabase.from('orders').insert({
         restaurant_id: restaurantId,
         client_name: clientName,
         phone: phone,
         order_type: fulfillmentType,
-        table_id: fulfillmentType === 'sur_place' ? selectedTableId || null : null,
+        table_id: fulfillmentType === 'sur_place' && selectedTableId ? selectedTableId : null,
         status: 'pending',
-        total_amount: 0, // À adapter selon votre panier d'articles
+        total_amount: 0, // Ajustez selon votre panier si nécessaire
+        // Vous pouvez aussi stocker la date/heure/personnes si vos colonnes existent :
+        // reservation_date: date,
+        // reservation_time: time,
+        // guests_count: guests,
+        // notes: specialRequest
       });
 
       if (error) throw error;
@@ -56,7 +73,10 @@ export default function ReservationForm({ restaurantId, restaurantName }: { rest
       setSuccess(true);
       setClientName('');
       setPhone('');
+      setDate('');
+      setTime('');
       setSelectedTableId('');
+      setSpecialRequest('');
     } catch (err: any) {
       alert("Erreur lors de l'enregistrement : " + err.message);
     } finally {
@@ -66,22 +86,24 @@ export default function ReservationForm({ restaurantId, restaurantName }: { rest
 
   return (
     <div className="rounded-3xl border border-[#800020]/15 bg-white p-6 shadow-lg">
-      <h3 className="text-xl font-bold text-gray-900 mb-4">Commander / Réserver</h3>
+      <h3 className="text-xl font-bold text-gray-900 mb-4">
+        Réserver une table chez {restaurantName}
+      </h3>
 
       {success ? (
         <div className="rounded-2xl bg-emerald-50 p-4 text-center text-emerald-800">
-          <p className="font-semibold">Commande / Réservation envoyée !</p>
-          <p className="text-sm mt-1">Le restaurant va la traiter rapidement.</p>
+          <p className="font-semibold">Réservation envoyée avec succès !</p>
+          <p className="text-sm mt-1">Le restaurant va confirmer votre demande.</p>
           <button
             onClick={() => setSuccess(false)}
             className="mt-4 text-xs font-bold underline text-[#800020]"
           >
-            Faire une autre commande
+            Faire une autre réservation
           </button>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Choix du mode */}
+          {/* Choix du mode : Sur place / À emporter */}
           <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
             <button
               type="button"
@@ -112,7 +134,7 @@ export default function ReservationForm({ restaurantId, restaurantName }: { rest
               <select
                 value={selectedTableId}
                 onChange={(e) => setSelectedTableId(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none"
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-white"
                 required={fulfillmentType === 'sur_place'}
               >
                 <option value="">-- Sélectionnez une table --</option>
@@ -155,12 +177,72 @@ export default function ReservationForm({ restaurantId, restaurantName }: { rest
             />
           </div>
 
+          {/* Date */}
+          <div>
+            <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
+              Date
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none"
+              required
+            />
+          </div>
+
+          {/* Heure */}
+          <div>
+            <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
+              Heure
+            </label>
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none"
+              required
+            />
+          </div>
+
+          {/* Nombre de personnes */}
+          <div>
+            <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
+              Nombre de personnes
+            </label>
+            <select
+              value={guests}
+              onChange={(e) => setGuests(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-white"
+            >
+              <option value="1">1 personne</option>
+              <option value="2">2 personnes</option>
+              <option value="3">3 personnes</option>
+              <option value="4">4 personnes</option>
+              <option value="5">5+ personnes</option>
+            </select>
+          </div>
+
+          {/* Demande spéciale */}
+          <div>
+            <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
+              Demande spéciale (Optionnel)
+            </label>
+            <textarea
+              value={specialRequest}
+              onChange={(e) => setSpecialRequest(e.target.value)}
+              placeholder="Ex: Anniversaire, chaise haute, table en terrasse..."
+              rows={3}
+              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none resize-none"
+            />
+          </div>
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-full bg-[#800020] py-3 text-center font-semibold text-white transition hover:bg-[#600018] disabled:opacity-50"
+            className="w-full rounded-full bg-[#800020] py-3.5 text-center font-semibold text-white transition hover:bg-[#600018] disabled:opacity-50"
           >
-            {loading ? 'Validation en cours...' : 'Confirmer la commande'}
+            {loading ? 'Validation en cours...' : 'Confirmer la réservation'}
           </button>
         </form>
       )}
