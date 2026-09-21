@@ -58,7 +58,7 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
       const selectedTable = tables.find(t => t.id === selectedTableId);
       const tableName = selectedTable ? selectedTable.name : '';
 
-      // Enregistrement dans la table dédiée 'reservations'
+      // Enregistrement dans la table 'reservations' avec 'guests' (conforme au schéma SQL)
       const { error } = await supabase.from('reservations').insert({
         restaurant_id: restaurantId,
         client_name: clientName,
@@ -67,7 +67,8 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
         status: 'pending',
         reservation_date: date || null,
         reservation_time: time || null,
-        guests_count: guests,
+        guests: guests, 
+        special_request: specialRequest || null,
         note: `Table: ${tableName ? tableName : 'Non spécifiée'} | ${specialRequest}`.trim(),
       });
 
