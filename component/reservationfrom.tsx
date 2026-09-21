@@ -15,7 +15,6 @@ interface ReservationFormProps {
 }
 
 export default function ReservationForm({ restaurantId, restaurantName }: ReservationFormProps) {
-  const [fulfillmentType, setFulfillmentType] = useState<'sur_place' | 'a_emporter'>('sur_place');
   const [tables, setTables] = useState<Table[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<string>('');
   
@@ -29,7 +28,6 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Charger les tables disponibles pour ce restaurant
   useEffect(() => {
     async function fetchTables() {
       const { data, error } = await supabase
@@ -47,9 +45,8 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
     }
   }, [restaurantId]);
 
-  // Filtrer les tables selon la capacité par rapport au nombre de personnes choisies
   const filteredTables = tables.filter((table) => {
-    if (!table.capacity) return true; // Si la capacité n'est pas renseignée, on la laisse par sécurité
+    if (!table.capacity) return true;
     return table.capacity >= guests;
   });
 
@@ -58,20 +55,17 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
     setLoading(true);
 
     try {
-      // Trouver le nom de la table sélectionnée pour l'historique ou les notes si besoin
       const selectedTable = tables.find(t => t.id === selectedTableId);
       const tableName = selectedTable ? selectedTable.name : '';
 
-      // Enregistrement de la commande / réservation dans Supabase
       const { error } = await supabase.from('orders').insert({
         restaurant_id: restaurantId,
         client_name: clientName,
         phone: phone,
-        order_type: fulfillmentType,
-        table_id: fulfillmentType === 'sur_place' && selectedTableId ? selectedTableId : null,
+        order_type: 'sur_place',
+        table_id: selectedTableId || null,
         status: 'pending',
         total_amount: 0,
-        // Colonnes additionnelles adaptées pour la réservation
         reservation_date: date || null,
         reservation_time: time || null,
         guests_count: guests,
@@ -117,28 +111,6 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Choix du mode : Sur place / À emporter */}
-          <div className="grid grid-cols-2 gap-2 p-1.5 bg-gray-50 rounded-2xl border border-gray-100">
-            <button
-              type="button"
-              onClick={() => setFulfillmentType('sur_place')}
-              className={`py-2.5 text-sm font-semibold rounded-xl transition-all ${
-                fulfillmentType === 'sur_place' ? 'bg-[#800020] text-white shadow-md' : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              🍽️ Sur place
-            </button>
-            <button
-              type="button"
-              onClick={() => setFulfillmentType('a_emporter')}
-              className={`py-2.5 text-sm font-semibold rounded-xl transition-all ${
-                fulfillmentType === 'a_emporter' ? 'bg-[#800020] text-white shadow-md' : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              🛍️ À emporter
-            </button>
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Nom du client */}
             <div>
@@ -150,7 +122,7 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
                 placeholder="Ex: Manasse Swan"
-                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-gray-50/50"
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-900 font-medium focus:border-[#800020] focus:outline-none bg-gray-50/50"
                 required
               />
             </div>
@@ -165,7 +137,7 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Ex: +243..."
-                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-gray-50/50"
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-900 font-medium focus:border-[#800020] focus:outline-none bg-gray-50/50"
                 required
               />
             </div>
@@ -181,7 +153,7 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-gray-50/50"
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-900 font-medium focus:border-[#800020] focus:outline-none bg-gray-50/50"
                 required
               />
             </div>
@@ -195,7 +167,7 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
                 type="time"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-gray-50/50"
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-900 font-medium focus:border-[#800020] focus:outline-none bg-gray-50/50"
                 required
               />
             </div>
@@ -209,9 +181,9 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
                 value={guests}
                 onChange={(e) => {
                   setGuests(Number(e.target.value));
-                  setSelectedTableId(''); // Réinitialise la table si le nombre de personnes change pour éviter les incohérences
+                  setSelectedTableId('');
                 }}
-                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-gray-50/50"
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-900 font-medium focus:border-[#800020] focus:outline-none bg-gray-50/50"
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map((num) => (
                   <option key={num} value={num}>
@@ -222,32 +194,30 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
             </div>
           </div>
 
-          {/* Sélection intelligente de la table si "Sur place" */}
-          {fulfillmentType === 'sur_place' && (
-            <div className="rounded-2xl border border-dashed border-gray-300 p-4 bg-gray-50/30">
-              <label className="block text-xs font-semibold uppercase text-[#800020] mb-1">
-                Sélectionner une table adaptée ({guests} pers. min)
-              </label>
-              <select
-                value={selectedTableId}
-                onChange={(e) => setSelectedTableId(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-white font-medium"
-                required={fulfillmentType === 'sur_place'}
-              >
-                <option value="">-- Choisissez une table libre --</option>
-                {filteredTables.map((table) => (
-                  <option key={table.id} value={table.id}>
-                    Table : {table.name} {table.capacity ? `(Capacité : ${table.capacity} pers.)` : ''}
-                  </option>
-                ))}
-              </select>
-              {filteredTables.length === 0 && (
-                <p className="text-xs text-amber-600 mt-2 font-medium">
-                  ⚠️ Aucune table enregistrée ne correspond à cette capacité exacte pour le moment. Veuillez contacter le restaurant.
-                </p>
-              )}
-            </div>
-          )}
+          {/* Sélection intelligente de la table */}
+          <div className="rounded-2xl border border-dashed border-gray-300 p-4 bg-gray-50/30">
+            <label className="block text-xs font-semibold uppercase text-[#800020] mb-1">
+              Sélectionner une table adaptée ({guests} pers. min)
+            </label>
+            <select
+              value={selectedTableId}
+              onChange={(e) => setSelectedTableId(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-900 font-medium focus:border-[#800020] focus:outline-none bg-white"
+              required
+            >
+              <option value="">-- Choisissez une table libre --</option>
+              {filteredTables.map((table) => (
+                <option key={table.id} value={table.id}>
+                  Table : {table.name} {table.capacity ? `(Capacité : ${table.capacity} pers.)` : ''}
+                </option>
+              ))}
+            </select>
+            {filteredTables.length === 0 && (
+              <p className="text-xs text-amber-600 mt-2 font-medium">
+                ⚠️ Aucune table enregistrée ne correspond à cette capacité exacte pour le moment. Veuillez contacter le restaurant.
+              </p>
+            )}
+          </div>
 
           {/* Demande spéciale */}
           <div>
@@ -259,7 +229,7 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
               onChange={(e) => setSpecialRequest(e.target.value)}
               placeholder="Ex: Anniversaire, chaise haute pour enfant, table en terrasse..."
               rows={2}
-              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none resize-none bg-gray-50/50"
+              className="w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-900 font-medium focus:border-[#800020] focus:outline-none resize-none bg-gray-50/50"
             />
           </div>
 
