@@ -41,12 +41,6 @@ export default async function HomePage() {
             >
               Explorer les restaurants →
             </Link>
-            <Link
-              href="/partner/register"
-              className="inline-flex items-center justify-center rounded-2xl bg-white border border-gray-200 px-8 py-4 text-sm font-semibold text-gray-700 transition hover:border-[#800020] hover:text-[#800020] shadow-sm"
-            >
-              Inscrire mon établissement
-            </Link>
           </div>
         </div>
       </section>
