@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase';
 interface Table {
   id: string;
   name: string;
-  number?: string | number;
   capacity?: number;
 }
 
@@ -24,18 +23,18 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
   const [phone, setPhone] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
-  const [guests, setGuests] = useState('2');
+  const [guests, setGuests] = useState<number>(2);
   const [specialRequest, setSpecialRequest] = useState('');
   
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Charger les tables disponibles pour ce restaurant (nom, numéro, capacité)
+  // Charger les tables disponibles pour ce restaurant
   useEffect(() => {
     async function fetchTables() {
       const { data, error } = await supabase
         .from('tables')
-        .select('id, name, number, capacity')
+        .select('id, name, capacity')
         .eq('restaurant_id', restaurantId);
 
       if (!error && data) {
@@ -48,27 +47,22 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
     }
   }, [restaurantId]);
 
-  // Filtrer intelligemment les tables selon la capacité et le nombre de convives
+  // Filtrer les tables selon la capacité par rapport au nombre de personnes choisies
   const filteredTables = tables.filter((table) => {
-    if (!table.capacity) return true;
-    return table.capacity >= parseInt(guests, 10);
+    if (!table.capacity) return true; // Si la capacité n'est pas renseignée, on la laisse par sécurité
+    return table.capacity >= guests;
   });
-
-  // Réinitialiser la table sélectionnée si elle ne correspond plus au nouveau nombre de convives
-  useEffect(() => {
-    if (selectedTableId) {
-      const tableIsValid = filteredTables.some((t) => t.id === selectedTableId);
-      if (!tableIsValid) {
-        setSelectedTableId('');
-      }
-    }
-  }, [guests, filteredTables, selectedTableId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Trouver le nom de la table sélectionnée pour l'historique ou les notes si besoin
+      const selectedTable = tables.find(t => t.id === selectedTableId);
+      const tableName = selectedTable ? selectedTable.name : '';
+
+      // Enregistrement de la commande / réservation dans Supabase
       const { error } = await supabase.from('orders').insert({
         restaurant_id: restaurantId,
         client_name: clientName,
@@ -77,11 +71,11 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
         table_id: fulfillmentType === 'sur_place' && selectedTableId ? selectedTableId : null,
         status: 'pending',
         total_amount: 0,
-        // Décommentez et adaptez selon vos colonnes Supabase si elles existent :
-        // reservation_date: date,
-        // reservation_time: time,
-        // guests_count: parseInt(guests, 10),
-        // notes: specialRequest
+        // Colonnes additionnelles adaptées pour la réservation
+        reservation_date: date || null,
+        reservation_time: time || null,
+        guests_count: guests,
+        note: `Table: ${tableName ? tableName : 'Non spécifiée'} | ${specialRequest}`.trim(),
       });
 
       if (error) throw error;
@@ -102,23 +96,23 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
 
   return (
     <div className="rounded-3xl border border-[#800020]/15 bg-white p-6 shadow-xl">
-      <div className="border-b border-gray-100 pb-4 mb-6">
-        <span className="text-xs font-semibold text-[#800020] uppercase tracking-wider">Réservation & Commande</span>
-        <h3 className="text-xl font-bold text-gray-900 mt-1">
-          {restaurantName}
+      <div className="mb-6 border-b border-gray-100 pb-4">
+        <span className="text-xs font-semibold uppercase tracking-wider text-[#800020]">Réservation en ligne</span>
+        <h3 className="text-xl font-extrabold text-gray-900 mt-1">
+          Réserver chez {restaurantName}
         </h3>
       </div>
 
       {success ? (
-        <div className="rounded-2xl bg-emerald-50 p-6 text-center text-emerald-800 space-y-2">
-          <div className="text-3xl">🎉</div>
+        <div className="rounded-2xl bg-emerald-50 p-6 text-center text-emerald-900 border border-emerald-100">
+          <div className="text-3xl mb-2">🎉</div>
           <p className="font-bold text-lg">Réservation envoyée avec succès !</p>
-          <p className="text-sm text-emerald-700">Le restaurant va valider votre demande sous peu.</p>
+          <p className="text-sm mt-1 text-emerald-700">Le restaurant a bien reçu votre demande et va la confirmer.</p>
           <button
             onClick={() => setSuccess(false)}
-            className="mt-4 inline-block rounded-xl bg-emerald-600 px-6 py-2.5 text-xs font-bold text-white shadow transition hover:bg-emerald-700"
+            className="mt-5 inline-block rounded-full bg-[#800020] px-6 py-2.5 text-xs font-bold text-white transition hover:bg-[#600018]"
           >
-            Faire une autre réservation
+            Effectuer une autre réservation
           </button>
         </div>
       ) : (
@@ -145,130 +139,136 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
             </button>
           </div>
 
-          {/* Nombre de personnes (placé avant le choix de table pour filtrer dynamiquement) */}
-          <div>
-            <label className="block text-xs font-semibold uppercase text-gray-600 mb-1.5">
-              Nombre de personnes
-            </label>
-            <select
-              value={guests}
-              onChange={(e) => setGuests(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-white shadow-sm"
-            >
-              <option value="1">1 personne</option>
-              <option value="2">2 personnes</option>
-              <option value="3">3 personnes</option>
-              <option value="4">4 personnes</option>
-              <option value="5">5 personnes</option>
-              <option value="6">6+ personnes</option>
-            </select>
-          </div>
-
-          {/* Sélection de la table si "Sur place" avec filtrage intelligent */}
-          {fulfillmentType === 'sur_place' && (
-            <div className="bg-[#800020]/5 p-4 rounded-2xl border border-[#800020]/10 space-y-2">
-              <label className="block text-xs font-semibold uppercase text-[#800020]">
-                Sélectionner une table adaptée ({guests} pers. min)
-              </label>
-              <select
-                value={selectedTableId}
-                onChange={(e) => setSelectedTableId(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-white shadow-sm"
-                required={fulfillmentType === 'sur_place'}
-              >
-                <option value="">-- Choisissez une table disponible --</option>
-                {filteredTables.map((table) => (
-                  <option key={table.id} value={table.id}>
-                    {table.number ? `N°${table.number} - ` : ''}{table.name} {table.capacity ? `(Capacité : ${table.capacity} pers.)` : ''}
-                  </option>
-                ))}
-              </select>
-              {filteredTables.length === 0 && (
-                <p className="text-xs text-amber-700 mt-1">
-                  ⚠️ Aucune table disponible avec une capacité suffisante pour {guests} personnes.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Nom du client */}
-          <div>
-            <label className="block text-xs font-semibold uppercase text-gray-600 mb-1.5">
-              Votre Nom
-            </label>
-            <input
-              type="text"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              placeholder="Ex: Manasse Swan"
-              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none shadow-sm"
-              required
-            />
-          </div>
-
-          {/* Téléphone */}
-          <div>
-            <label className="block text-xs font-semibold uppercase text-gray-600 mb-1.5">
-              Téléphone
-            </label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Ex: +243..."
-              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none shadow-sm"
-              required
-            />
-          </div>
-
-          {/* Grille Date & Heure */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Nom du client */}
             <div>
-              <label className="block text-xs font-semibold uppercase text-gray-600 mb-1.5">
+              <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
+                Votre Nom complet
+              </label>
+              <input
+                type="text"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                placeholder="Ex: Manasse Swan"
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-gray-50/50"
+                required
+              />
+            </div>
+
+            {/* Téléphone */}
+            <div>
+              <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
+                Numéro de téléphone
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Ex: +243..."
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-gray-50/50"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Date */}
+            <div>
+              <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
                 Date
               </label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none shadow-sm"
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-gray-50/50"
                 required
               />
             </div>
+
+            {/* Heure */}
             <div>
-              <label className="block text-xs font-semibold uppercase text-gray-600 mb-1.5">
+              <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
                 Heure
               </label>
               <input
                 type="time"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none shadow-sm"
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-gray-50/50"
                 required
               />
             </div>
+
+            {/* Nombre de personnes */}
+            <div>
+              <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
+                Couverts (Personnes)
+              </label>
+              <select
+                value={guests}
+                onChange={(e) => {
+                  setGuests(Number(e.target.value));
+                  setSelectedTableId(''); // Réinitialise la table si le nombre de personnes change pour éviter les incohérences
+                }}
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-gray-50/50"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map((num) => (
+                  <option key={num} value={num}>
+                    {num} {num > 1 ? 'personnes' : 'personne'}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+
+          {/* Sélection intelligente de la table si "Sur place" */}
+          {fulfillmentType === 'sur_place' && (
+            <div className="rounded-2xl border border-dashed border-gray-300 p-4 bg-gray-50/30">
+              <label className="block text-xs font-semibold uppercase text-[#800020] mb-1">
+                Sélectionner une table adaptée ({guests} pers. min)
+              </label>
+              <select
+                value={selectedTableId}
+                onChange={(e) => setSelectedTableId(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none bg-white font-medium"
+                required={fulfillmentType === 'sur_place'}
+              >
+                <option value="">-- Choisissez une table libre --</option>
+                {filteredTables.map((table) => (
+                  <option key={table.id} value={table.id}>
+                    Table : {table.name} {table.capacity ? `(Capacité : ${table.capacity} pers.)` : ''}
+                  </option>
+                ))}
+              </select>
+              {filteredTables.length === 0 && (
+                <p className="text-xs text-amber-600 mt-2 font-medium">
+                  ⚠️ Aucune table enregistrée ne correspond à cette capacité exacte pour le moment. Veuillez contacter le restaurant.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Demande spéciale */}
           <div>
-            <label className="block text-xs font-semibold uppercase text-gray-600 mb-1.5">
+            <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
               Demande spéciale (Optionnel)
             </label>
             <textarea
               value={specialRequest}
               onChange={(e) => setSpecialRequest(e.target.value)}
-              placeholder="Ex: Anniversaire, chaise haute, table en terrasse..."
+              placeholder="Ex: Anniversaire, chaise haute pour enfant, table en terrasse..."
               rows={2}
-              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none resize-none shadow-sm"
+              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[#800020] focus:outline-none resize-none bg-gray-50/50"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-2xl bg-[#800020] py-4 text-center font-semibold text-white transition hover:bg-[#600018] disabled:opacity-50 shadow-md"
+            className="w-full rounded-2xl bg-[#800020] py-4 text-center font-bold text-white transition hover:bg-[#600018] shadow-lg shadow-[#800020]/20 disabled:opacity-50"
           >
-            {loading ? 'Validation en cours...' : 'Confirmer la réservation'}
+            {loading ? 'Validation en cours...' : 'Confirmer la réservation →'}
           </button>
         </form>
       )}
