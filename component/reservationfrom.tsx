@@ -69,7 +69,6 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
         reservation_time: time || null,
         guests: guests, 
         special_request: specialRequest || null,
-        note: `Table: ${tableName ? tableName : 'Non spécifiée'} | ${specialRequest}`.trim(),
       });
 
       if (error) throw error;
