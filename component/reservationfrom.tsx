@@ -67,7 +67,7 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
         status: 'pending',
         reservation_date: date || null,
         reservation_time: time || null,
-        guests_count: guests,
+        guests: guests,
         note: `Table: ${tableName ? tableName : 'Non spécifiée'} | ${specialRequest}`.trim(),
       });
 
