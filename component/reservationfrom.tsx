@@ -58,14 +58,13 @@ export default function ReservationForm({ restaurantId, restaurantName }: Reserv
       const selectedTable = tables.find(t => t.id === selectedTableId);
       const tableName = selectedTable ? selectedTable.name : '';
 
-      const { error } = await supabase.from('orders').insert({
+      // Enregistrement dans la table dédiée 'reservations'
+      const { error } = await supabase.from('reservations').insert({
         restaurant_id: restaurantId,
         client_name: clientName,
         phone: phone,
-        order_type: 'sur_place',
         table_id: selectedTableId || null,
         status: 'pending',
-        total_amount: 0,
         reservation_date: date || null,
         reservation_time: time || null,
         guests_count: guests,
