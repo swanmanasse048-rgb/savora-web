@@ -95,13 +95,30 @@ function parseServices(raw: any): string[] {
 function parseUrls(raw: any): string[] {
   if (!raw) return [];
   if (Array.isArray(raw)) return raw.map((item) => String(item).trim()).filter(Boolean);
+  
   if (typeof raw === "string") {
+    let cleaned = raw.trim();
+    if (!cleaned) return [];
+
+    // Essayer de parser si c'est du JSON
     try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed.map((item) => String(item).trim()).filter(Boolean);
+      const parsed = JSON.parse(cleaned);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item).trim()).filter(Boolean);
+      }
     } catch {}
-    if (raw.trim()) return [raw.trim()];
+
+    // Gérer le format tableau Postgres ou texte brut avec séparateurs
+    if (cleaned.startsWith("{") && cleaned.endsWith("}")) {
+      cleaned = cleaned.slice(1, -1);
+    }
+
+    return cleaned
+      .split(",")
+      .map((s) => s.replace(/^["']|["']|[\[\]{}]/g, "").trim())
+      .filter(Boolean);
   }
+  
   return [];
 }
 
